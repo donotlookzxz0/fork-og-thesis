@@ -1,0 +1,181 @@
+/* ================================
+   GLOBAL DEFAULTS
+   ================================ */
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* FORCE ONE BACKGROUND COLOR (NAVBAR COLOR) */
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #1e1e1e;
+  color-scheme: dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ================================
+   PAGE BASE
+   ================================ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #1e1e1e;
+  color: inherit;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #1e1e1e;
+}
+
+/* ================================
+   TYPOGRAPHY
+   ================================ */
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+}
+
+p {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ================================
+   LINKS
+   ================================ */
+
+a {
+  font-weight: 500;
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #93c5fd;
+}
+
+/* ================================
+   BUTTONS (HTML)
+   ================================ */
+
+button {
+  border-radius: 8px;
+  border: 1px solid #333;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #2a2a2a;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #333;
+  border-color: #60a5fa;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ================================
+   CARDS / UTILITIES
+   ================================ */
+
+.card {
+  padding: 2em;
+  background-color: #242424;
+  border-radius: 12px;
+  border: 1px solid #333;
+}
+
+/* ================================
+   FORM ELEMENTS (IMPORTANT)
+   ================================ */
+
+input,
+select,
+textarea {
+  background-color: #2a2a2a;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+input::placeholder {
+  color: #aaa;
+}
+
+/* ================================
+   PRIMEVUE SAFETY OVERRIDES
+   ================================ */
+
+.p-component {
+  color: inherit;
+}
+
+.p-card,
+.p-dialog,
+.p-overlaypanel,
+.p-menu,
+.p-dropdown-panel {
+  background-color: #1e1e1e;
+  color: white;
+}
+
+/* ================================
+   SCROLLBAR (DESKTOP)
+   ================================ */
+
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1e1e1e;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #444;
+  }
+}

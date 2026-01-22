@@ -1,0 +1,273 @@
+<script setup>
+import { ref, onMounted, computed } from "vue"
+import api from "../services/api"
+
+const username = ref("")
+const selectedUser = ref(null)
+const amount = ref("")
+const loading = ref(false)
+const users = ref([])
+const balance = ref(0)
+
+/* =========================
+   FETCH USERS
+========================= */
+const fetchUsers = async () => {
+  const res = await api.get("/users")
+  users.value = res.data
+}
+
+onMounted(fetchUsers)
+
+/* =========================
+   FILTER USERS
+========================= */
+const filteredUsers = computed(() => {
+  const q = username.value.trim().toLowerCase()
+  if (!q || selectedUser.value) return []
+  return users.value.filter(u =>
+    u.username.toLowerCase().includes(q)
+  )
+})
+
+/* =========================
+   SELECT USER
+========================= */
+const selectUser = async (u) => {
+  selectedUser.value = u
+  username.value = u.username
+  balance.value = 0
+
+  const res = await api.get(
+    `/payment/admin/wallet/balance/${u.id}`
+  )
+  balance.value = res.data.balance
+}
+
+/* =========================
+   RESET FORM
+========================= */
+const resetForm = () => {
+  username.value = ""
+  selectedUser.value = null
+  amount.value = ""
+  balance.value = 0
+}
+
+/* =========================
+   CASH IN
+========================= */
+const cashIn = async () => {
+  if (!selectedUser.value || !amount.value) return
+  if (Number(amount.value) <= 0) return
+
+  if (
+    !confirm(
+      `Cash in ₱${amount.value} to ${selectedUser.value.username}?`
+    )
+  ) return
+
+  loading.value = true
+  try {
+    const res = await api.post("/payment/admin/wallet/topup", {
+      user_id: selectedUser.value.id,
+      amount: Number(amount.value),
+    })
+
+    alert(
+      `Cash-in successful!\n\nUser: ${selectedUser.value.username}\nNew Balance: ₱${res.data.new_balance}`
+    )
+
+    /* ✅ AUTO RESET AFTER SUCCESS */
+    resetForm()
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="wallet-wrapper">
+    <div class="wallet">
+      <h1>
+        <i class="pi pi-wallet"></i>
+        Wallet Cash-In
+      </h1>
+
+      <div class="card">
+        <!-- USER SEARCH -->
+        <div class="input-icon">
+          <i class="pi pi-user"></i>
+          <input
+            v-model="username"
+            placeholder="Type username"
+            @focus="selectedUser = null"
+          />
+        </div>
+
+        <!-- SEARCH RESULTS -->
+        <div v-if="filteredUsers.length" class="results">
+          <div
+            v-for="u in filteredUsers"
+            :key="u.id"
+            class="result-item"
+            @click="selectUser(u)"
+          >
+            <div class="user-main">{{ u.username }}</div>
+            <div class="user-sub">ID: {{ u.id }}</div>
+          </div>
+        </div>
+
+        <!-- SELECTED USER INFO -->
+        <div v-if="selectedUser" class="user-info">
+          <i class="pi pi-check-circle"></i>
+          <div>
+            <strong>{{ selectedUser.username }}</strong>
+            <div class="muted">
+              ID: {{ selectedUser.id }} · Balance: ₱{{ balance }}
+            </div>
+          </div>
+        </div>
+
+        <!-- AMOUNT -->
+        <div class="input-icon amount">
+          <i class="pi pi-dollar"></i>
+          <input
+            v-model.number="amount"
+            type="number"
+            min="1"
+            placeholder="Cash-in amount"
+          />
+        </div>
+
+        <!-- CASH IN BUTTON -->
+        <button
+          class="btn cashin w-full"
+          :disabled="loading || !selectedUser"
+          @click="cashIn"
+        >
+          <i class="pi pi-arrow-down"></i>
+          {{ loading ? "Processing..." : "Cash In Wallet" }}
+        </button>
+
+        <p class="hint">
+          Select a user, review balance, then top up.
+        </p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.wallet-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 40px);
+}
+
+.wallet {
+  width: 100%;
+  max-width: 460px;
+  padding: 20px;
+}
+
+.card {
+  border: 1px solid #ddd;
+  padding: 20px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-icon {
+  position: relative;
+}
+
+.input-icon i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #555;
+}
+
+.input-icon input {
+  height: 48px;
+  width: 100%;
+  padding-left: 38px;
+  font-size: 1rem;
+}
+
+.input-icon.amount input {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.results {
+  border: 1px solid #ddd;
+}
+
+.result-item {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.result-item:hover {
+  background: #f3f4f6;
+}
+
+.user-main {
+  color: #000;
+  font-weight: 600;
+}
+
+.user-sub {
+  font-size: 13px;
+  color: #444;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  background: #f9f9f9;
+}
+
+.user-info i {
+  color: #16a34a;
+}
+
+.btn {
+  height: 48px;
+  border: none;
+  cursor: pointer;
+}
+
+.cashin {
+  background: #16a34a;
+  color: white;
+}
+
+.cashin:disabled {
+  background: #86efac;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.muted {
+  font-size: 13px;
+  color: #444;
+}
+
+.hint {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+</style>

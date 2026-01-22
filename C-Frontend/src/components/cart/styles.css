@@ -1,0 +1,128 @@
+.cart-container {
+  text-align: center;
+  margin-top: 20px;
+  padding: 0 10px;
+  font-family: "Poppins", sans-serif;
+}
+
+.cart-nav {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.back-btn {
+  background: #113f67;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cart-title {
+  color: white;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.cart-empty {
+  color: white;
+}
+
+/* Table */
+.cart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.cart-table th {
+  background: #f1f5f9;
+  color: #113f67;
+  padding: 8px;
+}
+
+.cart-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  color: #374151;
+}
+
+.qty-controls {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.qty-controls input {
+  width: 48px;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.qty-btn.minus { background: #9d0909; }
+.qty-btn.plus { background: green; }
+
+.remove-btn {
+  background: #9d0909;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* Cards */
+.cart-cards { display: none; }
+
+.cart-card {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  text-align: left;
+}
+
+.item-total {
+  font-weight: 600;
+  color: #113f67;
+}
+
+.grand-total {
+  color: white;
+  margin-top: 24px;
+}
+
+.checkout-btn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #4ba5f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cart-table { display: none; }
+  .cart-cards { display: block; }
+}
