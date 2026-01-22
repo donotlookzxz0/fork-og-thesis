@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://pimart-service-shopping.onrender.com/:path*"
+      "destination": "http://209.38.29.51/:path*"
     },
     {
       "source": "/(.*)",
