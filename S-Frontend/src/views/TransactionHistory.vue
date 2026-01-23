@@ -108,7 +108,7 @@ onMounted(async () => {
     await fetchMe()
     await fetchTransactions()
   } catch {
-    // already handled in fetchMe
+   
   }
 })
 </script>
