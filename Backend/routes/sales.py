@@ -10,9 +10,10 @@ from models.item import Item
 sales_bp = Blueprint("sales", __name__)
 
 # --------------------------------------------------
-# 🔵 GET all transactions
+# 🔵 GET all transactions (ACCEPT /sales AND /sales/)
 # --------------------------------------------------
-@sales_bp.route("", methods=["GET"])          # 🔥 FIXED (NO TRAILING SLASH)
+@sales_bp.route("", methods=["GET"])
+@sales_bp.route("/", methods=["GET"])
 # @require_auth(roles=("admin",))
 def get_all_transactions():
     transactions = (
@@ -42,9 +43,10 @@ def get_all_transactions():
 
 
 # --------------------------------------------------
-# 🔵 GET single transaction
+# 🔵 GET single transaction (ACCEPT BOTH)
 # --------------------------------------------------
 @sales_bp.route("/<int:id>", methods=["GET"])
+@sales_bp.route("/<int:id>/", methods=["GET"])
 # @require_auth(roles=("admin",))
 def get_transaction(id):
     t = SalesTransaction.query.get(id)
@@ -69,14 +71,15 @@ def get_transaction(id):
 
 
 # --------------------------------------------------
-# 🟢 CREATE transaction
+# 🟢 CREATE transaction (ACCEPT /sales AND /sales/)
 # --------------------------------------------------
-@sales_bp.route("", methods=["POST"])          # 🔥 FIXED (NO TRAILING SLASH)
+@sales_bp.route("", methods=["POST"])
+@sales_bp.route("/", methods=["POST"])
 # @require_auth()
 def create_transaction():
     data = request.get_json() or {}
     cart_items = data.get("items", [])
-    user_id = data.get("user_id")  # passed explicitly now
+    user_id = data.get("user_id")
 
     if not user_id:
         return jsonify({"error": "user_id is required"}), 400
@@ -120,9 +123,10 @@ def create_transaction():
 
 
 # --------------------------------------------------
-# 🔵 UPDATE transaction
+# 🔵 UPDATE transaction (ACCEPT BOTH)
 # --------------------------------------------------
 @sales_bp.route("/<int:id>", methods=["PUT"])
+@sales_bp.route("/<int:id>/", methods=["PUT"])
 # @require_auth(roles=("admin",))
 def update_transaction(id):
     t = SalesTransaction.query.get(id)
@@ -163,9 +167,10 @@ def update_transaction(id):
 
 
 # --------------------------------------------------
-# 🔴 DELETE transaction
+# 🔴 DELETE transaction (ACCEPT BOTH)
 # --------------------------------------------------
 @sales_bp.route("/<int:id>", methods=["DELETE"])
+@sales_bp.route("/<int:id>/", methods=["DELETE"])
 # @require_auth(roles=("admin",))
 def delete_transaction(id):
     t = SalesTransaction.query.get(id)
