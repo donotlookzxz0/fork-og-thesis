@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api",          // ✅ NO TRAILING SLASH (IMPORTANT)
-  withCredentials: true,
+  baseURL: "https://api.pimart.software",
   headers: {
     "Content-Type": "application/json",
   },
