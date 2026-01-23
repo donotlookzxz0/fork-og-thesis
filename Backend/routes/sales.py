@@ -12,7 +12,7 @@ sales_bp = Blueprint("sales", __name__)
 # --------------------------------------------------
 # 🔵 GET all transactions
 # --------------------------------------------------
-@sales_bp.route("/", methods=["GET"])
+@sales_bp.route("", methods=["GET"])          # 🔥 FIXED (NO TRAILING SLASH)
 # @require_auth(roles=("admin",))
 def get_all_transactions():
     transactions = (
@@ -71,7 +71,7 @@ def get_transaction(id):
 # --------------------------------------------------
 # 🟢 CREATE transaction
 # --------------------------------------------------
-@sales_bp.route("/", methods=["POST"])
+@sales_bp.route("", methods=["POST"])          # 🔥 FIXED (NO TRAILING SLASH)
 # @require_auth()
 def create_transaction():
     data = request.get_json() or {}
