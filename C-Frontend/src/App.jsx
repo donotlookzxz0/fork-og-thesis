@@ -6,8 +6,8 @@ import Header from "./components/navbar/header";
 import Home from "./screens/landing/page";
 import ScannerPage from "./screens/add-to-cart";
 import ViewCart from "./screens/view-cart";
-import Checkout from "./components/Checkout";
-import BestSellers from "./components/BestSellers";
+import Checkout from "./screens/checkout";
+import Recommendations from "./screens/recommendations";
 import Wallet from "./screens/Wallet"; 
 import Login from "./screens/auth/Login";
 import Register from "./screens/auth/Register";
@@ -75,7 +75,7 @@ function App() {
           element={
             <ProtectedRoute>
               <Header />
-              <BestSellers setCart={setCart} />
+              <Recommendations cart={cart} setCart={setCart} />
             </ProtectedRoute>
           }
         />

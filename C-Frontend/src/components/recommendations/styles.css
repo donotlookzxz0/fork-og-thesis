@@ -1,0 +1,162 @@
+.recommended-container {
+  max-width: 860px;
+  margin: 40px auto 40px;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  font-family: "Poppins", sans-serif;
+  text-align: center;
+}
+
+.recommended-title {
+  font-size: 2rem;
+  color: #000000;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.recommended-subtitle {
+  color: #757575;
+  margin-bottom: 32px;
+  font-size: 0.95rem;
+}
+
+.loading,
+.no-data {
+  color: #6B7280;
+  font-style: italic;
+}
+
+/* Natural rendering */
+.recommended-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* Square cards */
+.recommended-card {
+  width: 180px;
+  height: 180px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.item-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 4px;
+}
+
+.item-barcode {
+  font-size: 0.9rem;
+  color: #000000;
+  margin-bottom: 6px;
+  overflow-wrap: break-word;
+}
+
+.item-price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ea1e25;
+  margin-bottom: 5px;
+}
+
+.add-btn {
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: #ea1e25;
+  color: white;
+}
+
+.add-btn:hover {
+  background-color: #e2161d;
+  cursor: pointer;
+}
+
+.add-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.go-cart-nav {
+  max-width: 860px;
+  margin: 40px auto 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.go-cart-btn {
+  background: #000000;
+  color: white;
+  border: none;
+  padding: 10px 21px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.go-cart-btn:hover {
+  background: #202020;
+}
+
+@media (max-width: 768px) {
+  .recommended-container {
+    max-width: calc(100% - 32px);
+    padding: 28px 20px;
+  }
+
+  .recommended-card {
+    width: 240px;
+    height: 160px;
+  }
+
+  .item-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .item-barcode {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+  }
+
+  .item-price {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .add-btn {
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: white;
+  }
+
+  .go-cart-nav {
+    max-width: 860px;
+    margin: 40px auto 0;
+    display: flex;
+    justify-content: flex-start;
+    margin-left: 5%;
+  }
+
+}

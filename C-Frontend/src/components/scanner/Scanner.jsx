@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCamera, faCartShopping, faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import { faCamera, faCartShopping, faPaperclip, faExclamation } from "@fortawesome/free-solid-svg-icons";
 import { useScanner } from "../../hooks/useScanner";
 import { useCartActions } from "../../hooks/useCartActions";
 import "./styles.css";
@@ -43,10 +43,21 @@ const Scanner = ({ cart, setCart }) => {
 
   return (
     <PageWrapper>
-      <PrimaryButton onClick={() => navigate("/cart")} style={{ marginLeft: "auto" }}>
-        <FontAwesomeIcon icon={faCartShopping} /> Go to Cart
-      </PrimaryButton>
-      
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24
+        }}
+      >
+        <PrimaryButton onClick={() => navigate("/best")}>
+          <FontAwesomeIcon icon={faExclamation} />Recommendations
+        </PrimaryButton>
+        <PrimaryButton onClick={() => navigate("/cart")} style={{ marginLeft: "auto" }}>
+          <FontAwesomeIcon icon={faCartShopping} /> Go to Cart
+        </PrimaryButton>
+      </div>
       <h2 style={{ color: "#000", marginTop: 24 }}>
         <FontAwesomeIcon icon={faCamera} /> Barcode Scanner
       </h2>
