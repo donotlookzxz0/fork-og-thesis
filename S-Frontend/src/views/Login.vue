@@ -8,25 +8,43 @@ import Password from "primevue/password"
 import Button from "primevue/button"
 
 const router = useRouter()
+
 const username = ref("")
 const password = ref("")
 const error = ref("")
 const loading = ref(false)
 
+/* ---------------- LOGIN ---------------- */
+
 const login = async () => {
+  if (loading.value) return   // 🔒 prevent double submit
+
   error.value = ""
   loading.value = true
+
   try {
-    // 🔥 FIXED: correct endpoint (NO trailing slash)
+    // 🔑 STEP 1 — LOGIN (SETS JWT COOKIES)
     await api.post("/users/login", {
       username: username.value,
       password: password.value
     })
 
-    // Login success → go to home/dashboard
-    router.push("/")
+    // 🔒 STEP 2 — VERIFY AUTH + GET ROLE
+    const me = await api.get("/users/me")
+
+    const role = me.data.role
+
+    // 🔁 STEP 3 — REDIRECT BASED ON ROLE (FUTURE SAFE)
+    if (role === "admin") {
+      router.push("/")
+    } else {
+      // if you later add customer dashboard
+      router.push("/")
+    }
+
   } catch (err) {
-    error.value = err.response?.data?.error || "Login failed"
+    console.error("Login error:", err)
+    error.value = err.response?.data?.error || "Invalid username or password"
   } finally {
     loading.value = false
   }
@@ -67,6 +85,7 @@ const login = async () => {
           icon="pi pi-arrow-right"
           class="login-btn"
           :loading="loading"
+          :disabled="loading"
           @click="login"
         />
       </div>

@@ -13,7 +13,10 @@ import Message from "primevue/message"
 const manualBarcode = ref("")
 const cart = ref([])
 const message = ref("")
-const userId = ref(null)   // ✅ added
+const userId = ref(null)
+
+const loadingUser = ref(true)
+const checkingOut = ref(false)
 
 let scanBuffer = ""
 let scanTimeout = null
@@ -27,8 +30,15 @@ const createTransaction = (payload) =>
 
 /* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
-  const res = await api.get("/users/me")
-  userId.value = res.data.id
+  try {
+    const res = await api.get("/users/me")
+    userId.value = res.data.id
+  } catch (err) {
+    console.error("Auth error in POS:", err)
+    message.value = "Session expired. Please login again."
+  } finally {
+    loadingUser.value = false
+  }
 }
 
 /* ---------------- SCANNER (AUTO) ---------------- */
@@ -52,7 +62,7 @@ const handleKeydown = async (e) => {
 }
 
 onMounted(() => {
-  fetchMe() // ✅ added
+  fetchMe()   // 🔑 MUST LOAD USER FIRST
   window.addEventListener("keydown", handleKeydown)
 })
 
@@ -78,6 +88,8 @@ const addByBarcode = async (barcode) => {
         quantity: 1
       })
     }
+
+    message.value = ""
   } catch {
     message.value = "Item not found"
   }
@@ -105,9 +117,27 @@ const total = computed(() =>
 
 /* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
+  // 🔒 SAFETY CHECKS (VERY IMPORTANT)
+  if (checkingOut.value) return
+  if (loadingUser.value) {
+    message.value = "Loading user..."
+    return
+  }
+  if (!userId.value) {
+    message.value = "Not authenticated. Please login again."
+    return
+  }
+  if (!cart.value.length) {
+    message.value = "Cart is empty"
+    return
+  }
+
+  checkingOut.value = true
+  message.value = ""
+
   try {
     const payload = {
-      user_id: userId.value,   // ✅ required by backend
+      user_id: userId.value,
       items: cart.value.map(i => ({
         item_id: i.item_id,
         quantity: i.quantity
@@ -117,9 +147,13 @@ const checkout = async () => {
     await createTransaction(payload)
 
     cart.value = []
-    message.value = "Transaction completed"
-  } catch {
-    message.value = "Checkout failed"
+    message.value = "Transaction completed successfully"
+
+  } catch (err) {
+    console.error("Checkout error:", err)
+    message.value = err.response?.data?.error || "Checkout failed"
+  } finally {
+    checkingOut.value = false
   }
 }
 </script>
@@ -134,7 +168,11 @@ const checkout = async () => {
         placeholder="Type barcode (optional)"
         @keyup.enter="addManual"
       />
-      <Button label="Add" icon="pi pi-plus" @click="addManual" />
+      <Button
+        label="Add"
+        icon="pi pi-plus"
+        @click="addManual"
+      />
     </div>
 
     <small class="hint">
@@ -147,6 +185,7 @@ const checkout = async () => {
       responsiveLayout="scroll"
     >
       <Column field="name" header="Item" />
+
       <Column header="Qty">
         <template #body="{ data }">
           <Button icon="pi pi-minus" text @click="decreaseQty(data)" />
@@ -154,16 +193,19 @@ const checkout = async () => {
           <Button icon="pi pi-plus" text @click="increaseQty(data)" />
         </template>
       </Column>
+
       <Column header="Price">
         <template #body="{ data }">
           ₱{{ data.price }}
         </template>
       </Column>
+
       <Column header="Total">
         <template #body="{ data }">
           ₱{{ (data.price * data.quantity).toFixed(2) }}
         </template>
       </Column>
+
       <Column header="">
         <template #body="{ data }">
           <Button
@@ -182,7 +224,8 @@ const checkout = async () => {
       label="PAY"
       icon="pi pi-credit-card"
       class="pay"
-      :disabled="!cart.length"
+      :disabled="!cart.length || loadingUser || checkingOut"
+      :loading="checkingOut"
       @click="checkout"
     />
 

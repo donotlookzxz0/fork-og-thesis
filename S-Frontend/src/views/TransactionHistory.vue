@@ -1,8 +1,11 @@
 <script setup>
 import { ref, onMounted, watch, computed } from "vue"
+import { useRouter } from "vue-router"
 import api from "../services/api"
 
 /* ---------------- STATE ---------------- */
+const router = useRouter()
+
 const transactions = ref([])
 const allTransactions = ref([])
 
@@ -13,15 +16,24 @@ const page = ref(1)
 const perPage = ref(10)
 
 const userId = ref(null)
+const authChecked = ref(false)
 
 /* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
+    authChecked.value = true
   } catch (err) {
     console.error("Auth error:", err)
-    error.value = "You are not authenticated"
+    authChecked.value = true
+    error.value = "Session expired. Please login again."
+
+    // 🔒 FORCE REDIRECT TO LOGIN
+    setTimeout(() => {
+      router.push("/login")
+    }, 800)
+
     throw err
   }
 }
@@ -49,7 +61,10 @@ const prevPage = () => {
 }
 
 watch(page, applyPagination)
-watch(perPage, applyPagination)
+watch(perPage, () => {
+  page.value = 1       // 🔒 reset to page 1 when page size changes
+  applyPagination()
+})
 
 /* ---------------- FETCH TRANSACTIONS ---------------- */
 const fetchTransactions = async () => {
@@ -67,9 +82,20 @@ const fetchTransactions = async () => {
 
     page.value = 1
     applyPagination()
+
   } catch (err) {
     console.error("Transactions error:", err)
-    error.value = err.response?.data?.error || "Failed to load transactions"
+
+    // 🔑 Token expired / unauthorized
+    if (err.response?.status === 401) {
+      error.value = "Session expired. Please login again."
+      setTimeout(() => {
+        router.push("/login")
+      }, 800)
+    } else {
+      error.value = err.response?.data?.error || "Failed to load transactions"
+    }
+
   } finally {
     loading.value = false
   }
@@ -113,9 +139,13 @@ onMounted(async () => {
 
     <h1><i class="pi pi-receipt"></i> Transaction History</h1>
 
-    <p v-if="loading">Loading...</p>
+    <!-- 🔄 Loading -->
+    <p v-if="loading">Loading transactions...</p>
+
+    <!-- ❌ Error -->
     <p v-if="error" class="error">{{ error }}</p>
 
+    <!-- 🟢 Table -->
     <table v-if="!loading && transactions.length">
       <thead>
         <tr>
@@ -125,6 +155,7 @@ onMounted(async () => {
           <th>Items</th>
         </tr>
       </thead>
+
       <tbody>
         <tr v-for="t in transactions" :key="t.transaction_id">
           <td>{{ t.transaction_id }}</td>
@@ -135,7 +166,7 @@ onMounted(async () => {
               <li v-for="item in t.items" :key="item.item_id">
                 {{ item.item_name }} ({{ item.category }})
                 — Qty: {{ item.quantity }}
-                — {{ item.price_at_sale }}
+                — ₱{{ item.price_at_sale }}
               </li>
             </ul>
           </td>
@@ -143,7 +174,8 @@ onMounted(async () => {
       </tbody>
     </table>
 
-    <p v-if="!loading && !transactions.length">
+    <!-- 🟡 Empty -->
+    <p v-if="!loading && !transactions.length && !error">
       No transactions found
     </p>
   </div>
@@ -208,5 +240,6 @@ ul {
 
 .error {
   color: #ef4444;
+  font-weight: 500;
 }
 </style>

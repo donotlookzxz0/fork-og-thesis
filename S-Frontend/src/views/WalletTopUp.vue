@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from "vue"
+import { useRouter } from "vue-router"
 import api from "../services/api"
+
+const router = useRouter()
 
 const username = ref("")
 const selectedUser = ref(null)
@@ -8,13 +11,25 @@ const amount = ref("")
 const loading = ref(false)
 const users = ref([])
 const balance = ref(0)
+const error = ref("")
 
 /* =========================
-   FETCH USERS
+   FETCH USERS (ADMIN ONLY)
 ========================= */
 const fetchUsers = async () => {
-  const res = await api.get("users")
-  users.value = res.data
+  try {
+    const res = await api.get("/users")
+    users.value = res.data
+  } catch (err) {
+    console.error("Users fetch error:", err)
+
+    if (err.response?.status === 401) {
+      error.value = "Session expired. Please login again."
+      setTimeout(() => router.push("/login"), 800)
+    } else {
+      error.value = err.response?.data?.error || "Failed to load users"
+    }
+  }
 }
 
 onMounted(fetchUsers)
@@ -34,14 +49,28 @@ const filteredUsers = computed(() => {
    SELECT USER
 ========================= */
 const selectUser = async (u) => {
-  selectedUser.value = u
-  username.value = u.username
-  balance.value = 0
+  try {
+    selectedUser.value = u
+    username.value = u.username
+    balance.value = 0
+    error.value = ""
 
-  const res = await api.get(
-    `payment/admin/wallet/balance/${u.id}`
-  )
-  balance.value = res.data.balance
+    const res = await api.get(
+      `/payment/admin/wallet/balance/${u.id}`
+    )
+
+    balance.value = res.data.balance
+
+  } catch (err) {
+    console.error("Balance fetch error:", err)
+
+    if (err.response?.status === 401) {
+      error.value = "Session expired. Please login again."
+      setTimeout(() => router.push("/login"), 800)
+    } else {
+      error.value = err.response?.data?.error || "Failed to fetch balance"
+    }
+  }
 }
 
 /* =========================
@@ -52,6 +81,7 @@ const resetForm = () => {
   selectedUser.value = null
   amount.value = ""
   balance.value = 0
+  error.value = ""
 }
 
 /* =========================
@@ -68,8 +98,10 @@ const cashIn = async () => {
   ) return
 
   loading.value = true
+  error.value = ""
+
   try {
-    const res = await api.post("payment/admin/wallet/topup", {
+    const res = await api.post("/payment/admin/wallet/topup", {
       user_id: selectedUser.value.id,
       amount: Number(amount.value),
     })
@@ -80,6 +112,17 @@ const cashIn = async () => {
 
     /* ✅ AUTO RESET AFTER SUCCESS */
     resetForm()
+
+  } catch (err) {
+    console.error("Topup error:", err)
+
+    if (err.response?.status === 401) {
+      error.value = "Session expired. Please login again."
+      setTimeout(() => router.push("/login"), 800)
+    } else {
+      error.value = err.response?.data?.error || "Cash-in failed"
+    }
+
   } finally {
     loading.value = false
   }
@@ -95,6 +138,9 @@ const cashIn = async () => {
       </h1>
 
       <div class="card">
+        <!-- ❌ Error -->
+        <p v-if="error" class="error">{{ error }}</p>
+
         <!-- USER SEARCH -->
         <div class="input-icon">
           <i class="pi pi-user"></i>
@@ -179,6 +225,12 @@ const cashIn = async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.error {
+  color: #ef4444;
+  font-weight: 500;
+  text-align: center;
 }
 
 .input-icon {
