@@ -3,11 +3,10 @@ import { ref, onMounted, computed } from "vue"
 import api from "../services/api"
 
 
-const getItems = () => api.get("items/")
-const createItem = (data) => api.post("items/", data)
-const updateItem = (id, data) => api.put(`items/${id}`, data)
-const deleteItem = (id) => api.delete(`items/${id}`)
-
+const getItems = () => api.get("/items")
+const createItem = (data) => api.post("/items", data)
+const updateItem = (id, data) => api.put(`/items/${id}`, data)
+const deleteItem = (id) => api.delete(`/items/${id}`)
 
 const categories = [
   "Fruits","Vegetables","Meat","Seafood","Dairy","Beverages","Snacks","Bakery",
