@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/:path*", "destination": "https://api.pimart.software/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
