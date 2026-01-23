@@ -1,36 +1,24 @@
-# routes/users.py
-# FULL FILE — COOKIE AUTH + ACCESS + REFRESH TOKENS (PRODUCTION READY)
-
 from flask import Blueprint, request, jsonify, make_response, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import db
 from datetime import datetime, timedelta
 from models.user import User
 import jwt
-
-# ✅ IMPORT THE SHARED AUTH DECORATOR
 from utils.auth_restrict import require_auth
 
 user_routes = Blueprint("user_routes", __name__)
 
-# --------------------------------------------------
-# 🔐 JWT CONFIG
-# --------------------------------------------------
 JWT_SECRET = "super-secret"
 ACCESS_EXPIRES = timedelta(minutes=15)
 REFRESH_EXPIRES = timedelta(days=7)
 
-# ✅ REQUIRED FOR VERCEL / SAFARI / IOS
 COOKIE_KWARGS = dict(
     httponly=True,
-    samesite="None",   # 🔥 CRITICAL
-    secure=True,       # 🔥 CRITICAL
-    path="/"           # 🔥 IMPORTANT
+    samesite="None",
+    secure=True,
+    path="/"
 )
 
-# --------------------------------------------------
-# TOKEN CREATOR
-# --------------------------------------------------
 def create_token(user_id, token_type="access"):
     payload = {
         "user_id": user_id,
@@ -40,9 +28,6 @@ def create_token(user_id, token_type="access"):
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
-# --------------------------------------------------
-# CURRENT USER
-# --------------------------------------------------
 @user_routes.route("/me", methods=["GET"])
 @require_auth(roles=("admin",))
 def me_admin():
@@ -53,7 +38,6 @@ def me_admin():
         "username": user.username,
         "role": user.role
     }), 200
-
 
 @user_routes.route("/me/customer", methods=["GET"])
 @require_auth(roles=("customer",))
@@ -66,11 +50,9 @@ def me_customer():
         "role": user.role
     }), 200
 
-# --------------------------------------------------
-# USERS CRUD
-# --------------------------------------------------
 @user_routes.route("", methods=["GET"])
 @user_routes.route("/", methods=["GET"])
+@require_auth(roles=("admin",))
 def get_users():
     users = User.query.all()
     return jsonify([
@@ -84,8 +66,8 @@ def get_users():
         for u in users
     ]), 200
 
-
 @user_routes.route("/<int:id>", methods=["GET"])
+@require_auth(roles=("admin",))
 def get_user(id):
     user = User.query.get(id)
     if not user:
@@ -99,9 +81,9 @@ def get_user(id):
         "updated_at": user.updated_at,
     }), 200
 
-
 @user_routes.route("", methods=["POST"])
 @user_routes.route("/", methods=["POST"])
+@require_auth(roles=("admin",))
 def create_user():
     data = request.json or {}
 
@@ -122,9 +104,6 @@ def create_user():
 
     return jsonify({"message": "user created", "id": user.id}), 201
 
-# --------------------------------------------------
-# LOGIN
-# --------------------------------------------------
 @user_routes.route("/login", methods=["POST"])
 def login():
     data = request.json or {}
@@ -149,9 +128,6 @@ def login():
 
     return resp, 200
 
-# --------------------------------------------------
-# REGISTER
-# --------------------------------------------------
 @user_routes.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
@@ -173,9 +149,6 @@ def register():
 
     return jsonify({"message": "Account created"}), 201
 
-# --------------------------------------------------
-# REFRESH TOKEN
-# --------------------------------------------------
 @user_routes.route("/refresh", methods=["POST"])
 def refresh():
     token = request.cookies.get("refresh_token")
@@ -201,9 +174,6 @@ def refresh():
     except jwt.InvalidTokenError:
         return jsonify({"error": "invalid refresh token"}), 401
 
-# --------------------------------------------------
-# LOGOUT
-# --------------------------------------------------
 @user_routes.route("/logout", methods=["POST"])
 def logout():
     refresh_token = request.cookies.get("refresh_token")
@@ -222,3 +192,26 @@ def logout():
     resp.delete_cookie("access_token", **COOKIE_KWARGS)
     resp.delete_cookie("refresh_token", **COOKIE_KWARGS)
     return resp, 200
+
+@user_routes.route("/<int:id>", methods=["DELETE"])
+@require_auth(roles=("admin",))
+def delete_user(id):
+    current_user = g.current_user
+
+    if current_user.id == id:
+        return jsonify({"error": "You cannot delete your own account"}), 400
+
+    user = User.query.get(id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    if user.role == "admin":
+        return jsonify({"error": "Cannot delete admin users"}), 403
+
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": "User deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete user", "details": str(e)}), 500
