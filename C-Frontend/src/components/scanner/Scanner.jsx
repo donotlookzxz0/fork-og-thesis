@@ -1,144 +1,139 @@
-import { useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCamera, faCartShopping, faPaperclip, faExclamation } from "@fortawesome/free-solid-svg-icons";
-import { useScanner } from "../../hooks/useScanner";
-import { useCartActions } from "../../hooks/useCartActions";
-import "./styles.css";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import api from "../api/axios";
 
-const PageWrapper = ({ children }) => (
-  <div className="page-wrapper">{children}</div>
-);
+export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
+  const videoRef = useRef(null);
+  const readerRef = useRef(null);
+  const controlsRef = useRef(null);
+  const lastScannedRef = useRef(null);
 
-const Section = ({ children }) => (
-  <div style={{
-    marginTop: 24, padding: 24, borderRadius: 16,
-    background: "#ffffff", border: "1px solid #E5E7EB",
-    boxShadow: "0 6px 16px rgba(0,0,0,.1)"
-  }}>{children}</div>
-);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [items, setItems] = useState([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [successItem, setSuccessItem] = useState(null);
 
-const PrimaryButton = ({ children, onClick, style }) => (
-  <button
-    onClick={onClick}
-    style={{
-      background: "#ea1e25", color: "#fff", border: "none",
-      borderRadius: 8, padding: "12px 18px",
-      fontWeight: 500, cursor: "pointer",
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-      ...style
-    }}
-  >
-    {children}
-  </button>
-);
+  /* =======================
+     LOAD ITEMS ONCE
+  ======================= */
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const res = await api.get("/items/");
+        console.log("🟢 SCANNER ITEMS LOADED:", res.data);
+        setItems(res.data || []);
+      } catch (e) {
+        console.error("🔴 Failed to load items for scanner", e);
+        setItems([]);
+      }
+    };
 
-const Scanner = ({ cart, setCart }) => {
-  const { addToCart, changeQuantity, deleteItem } = useCartActions(setCart);
+    loadItems();
+  }, []);
 
-  const navigate = useNavigate();
-  const {
-    videoRef, barcodeInput, setBarcodeInput, nameInput, setNameInput,
-    isScanning, setIsScanning, successItem, fetchProduct, suggestions
-  } = useScanner({ cart, onAddToCart: addToCart, onQuantityChange: changeQuantity });
+  /* =======================
+     FETCH PRODUCT BY BARCODE
+  ======================= */
+  const fetchProduct = useCallback(
+    async (barcode, { resumeScan = false } = {}) => {
+      if (!barcode) return;
 
-  return (
-    <PageWrapper>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24
-        }}
-      >
-        <PrimaryButton onClick={() => navigate("/best")}>
-          <FontAwesomeIcon icon={faExclamation} />Recommendations
-        </PrimaryButton>
-        <PrimaryButton onClick={() => navigate("/cart")} style={{ marginLeft: "auto" }}>
-          <FontAwesomeIcon icon={faCartShopping} /> Go to Cart
-        </PrimaryButton>
-      </div>
-      <h2 style={{ color: "#000", marginTop: 24 }}>
-        <FontAwesomeIcon icon={faCamera} /> Barcode Scanner
-      </h2>
+      try {
+        const { data } = await api.get(`/items/barcode/${barcode}`);
+        const product = { ...data, price: parseFloat(data.price) };
 
-      <div className="scanner-layout">
-        <div className="scanner-column">
-          <Section>
-            <PrimaryButton
-              onClick={() => setIsScanning(s => !s)}
-              style={{ background: isScanning ? "#DC2626" : "#000", marginBottom: 16 }}
-            >
-              {isScanning ? "Stop Camera" : "Start Camera"}
-            </PrimaryButton>
+        const existing = cart.find(i => i.barcode === product.barcode);
+        existing
+          ? onQuantityChange(product.barcode, existing.quantity + 1)
+          : onAddToCart({ ...product, quantity: 1 });
 
-            <div className="scanner-actions">
-              <input className="scanner-input" value={barcodeInput}
-                onChange={e => setBarcodeInput(e.target.value)}
-                placeholder="Enter barcode manually" />
-              <PrimaryButton onClick={() => fetchProduct(barcodeInput)}>Add</PrimaryButton>
-            </div>
+        setSuccessItem(product);
+        setIsScanning(false);
 
-            {isScanning && (
-              <div className="scanner-video-wrapper">
-                <video ref={videoRef} className="scanner-video" />
-                <div className="barcode-overlay"><div className="barcode-box" /></div>
-              </div>
-            )}
-
-            <input className="scanner-input" style={{ marginTop: 16 }}
-              value={nameInput} onChange={e => setNameInput(e.target.value)}
-              placeholder="Add item by name" />
-
-            {nameInput && (
-              <div className="suggestions">
-                {suggestions.map(item => (
-                  <div key={item.barcode} className="suggestion-item"
-                    onClick={() => { fetchProduct(item.barcode); setNameInput(""); }}>
-                    {item.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Section>
-        </div>
-
-        <div className="scanner-column">
-          <Section>
-            <h3 style={{ color: "#000" }}>
-              <FontAwesomeIcon icon={faPaperclip} /> Scanned Items
-            </h3>
-
-            {!cart.length ? <p style={{ color: "#6B7280" }}>No items yet...</p> :
-              cart.map(item => (
-                <div key={item.barcode} style={{ borderBottom: "1px solid #E5E7EB", padding: "12px 0" }}>
-                  <strong>{item.name}</strong>
-                  <p>₱{item.price.toFixed(2)}</p>
-                  <p style={{ color: "#6B7280" }}>{item.category}</p>
-
-                  <PrimaryButton
-                    onClick={() => deleteItem(item.barcode)}
-                    style={{ background: "#ea1e25" }}
-                  >
-                    Remove
-                  </PrimaryButton>
-                </div>
-              ))
-            }
-          </Section>
-        </div>
-      </div>
-
-      {successItem && (
-        <div className="success-modal">
-          <div className="success-box">
-            <h3>Item Added</h3>
-            <strong>{successItem.name}</strong>
-          </div>
-        </div>
-      )}
-    </PageWrapper>
+        setTimeout(() => {
+          setSuccessItem(null);
+          if (resumeScan) setIsScanning(true);
+        }, 1200);
+      } catch (e) {
+        console.error("🔴 Fetch product failed", e);
+        alert("Item not found");
+      }
+    },
+    [cart, onAddToCart, onQuantityChange]
   );
-};
 
-export default Scanner;
+  /* =======================
+     CAMERA SCANNER
+  ======================= */
+  useEffect(() => {
+    if (!isScanning) {
+      controlsRef.current?.stop();
+      controlsRef.current = null;
+      return;
+    }
+
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+
+    reader
+      .decodeFromVideoDevice(null, videoRef.current, result => {
+        if (!result) return;
+
+        const code = result.getText();
+        if (code !== lastScannedRef.current) {
+          lastScannedRef.current = code;
+          fetchProduct(code, { resumeScan: true });
+        }
+      })
+      .then(controls => {
+        controlsRef.current = controls;
+      })
+      .catch(err => {
+        console.error("Camera error:", err);
+      });
+
+    return () => {
+      controlsRef.current?.stop();
+      controlsRef.current = null;
+    };
+  }, [isScanning, fetchProduct]);
+
+  /* =======================
+     🔥 SMART NAME SEARCH (FINAL, STABLE)
+  ======================= */
+  const suggestions = useMemo(() => {
+    if (!nameInput || !items.length) return [];
+
+    const q = nameInput.toLowerCase().trim();
+    if (q.length < 1) return [];
+
+    return items
+      .map(i => {
+        const name = i.name.toLowerCase();
+        let score = 0;
+
+        if (name.startsWith(q)) score = 3;          // best
+        else if (name.includes(" " + q)) score = 2; // word match
+        else if (name.includes(q)) score = 1;       // anywhere
+
+        return { ...i, _score: score };
+      })
+      .filter(i => i._score > 0)
+      .sort((a, b) => b._score - a._score)
+      .slice(0, 6);
+  }, [nameInput, items]);
+
+  return {
+    videoRef,
+    barcodeInput,
+    setBarcodeInput,
+    nameInput,
+    setNameInput,
+    isScanning,
+    setIsScanning,
+    successItem,
+    fetchProduct,
+    suggestions,
+  };
+};
