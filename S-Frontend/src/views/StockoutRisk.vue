@@ -5,11 +5,11 @@ import api from "../services/api"
 const risks = ref([])
 
 const load = async () => {
-  risks.value = (await api.get("/ml/stockout-risk")).data
+  risks.value = (await api.get("ml/stockout-risk")).data
 }
 
 const run = async () => {
-  await api.post("/ml/stockout-risk")
+  await api.post("ml/stockout-risk")
   load()
 }
 

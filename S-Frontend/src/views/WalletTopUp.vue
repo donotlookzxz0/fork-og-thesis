@@ -13,7 +13,7 @@ const balance = ref(0)
    FETCH USERS
 ========================= */
 const fetchUsers = async () => {
-  const res = await api.get("/users")
+  const res = await api.get("users")
   users.value = res.data
 }
 
@@ -39,7 +39,7 @@ const selectUser = async (u) => {
   balance.value = 0
 
   const res = await api.get(
-    `/payment/admin/wallet/balance/${u.id}`
+    `payment/admin/wallet/balance/${u.id}`
   )
   balance.value = res.data.balance
 }
@@ -69,7 +69,7 @@ const cashIn = async () => {
 
   loading.value = true
   try {
-    const res = await api.post("/payment/admin/wallet/topup", {
+    const res = await api.post("payment/admin/wallet/topup", {
       user_id: selectedUser.value.id,
       amount: Number(amount.value),
     })
