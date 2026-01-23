@@ -20,7 +20,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   useEffect(() => {
     const loadItems = async () => {
       try {
-        const res = await api.get("/items/");
+        const res = await api.get("/items");
         console.log("🟢 SCANNER ITEMS LOADED:", res.data);
         setItems(res.data || []);
       } catch (e) {

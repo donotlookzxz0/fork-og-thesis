@@ -83,22 +83,13 @@
 }
 
 .suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-
   background: white;
+  margin-top: 6px;
   border: 1px solid #CBD5E1;
   border-radius: 8px;
-
-  max-height: 200px;
+  max-height: 180px;
   overflow-y: auto;
-
-  z-index: 99999;
-  box-shadow: 0 6px 16px rgba(0,0,0,.15);
 }
-
 
 .suggestion-item {
   padding: 10px;
