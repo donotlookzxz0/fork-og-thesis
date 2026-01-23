@@ -20,6 +20,7 @@ def get_recommendations(user_id):
         "recommendations": [
             {
                 "id": i.id,
+                "barcode": i.barcode,
                 "name": i.name,
                 "category": i.category,
                 "price": float(i.price)
@@ -46,6 +47,7 @@ def get_all_recommendations():
             "recommendations": [
                 {
                     "id": i.id,
+                    "barcode": i.barcode,
                     "name": i.name,
                     "category": i.category,
                     "price": float(i.price)
