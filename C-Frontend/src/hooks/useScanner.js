@@ -23,7 +23,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     async (barcode, { resumeScan = false } = {}) => {
       if (!barcode) return;
       try {
-        const { data } = await api.get(`items/barcode/${barcode}`);
+        const { data } = await api.get(`/items/barcode/${barcode}`);
         const product = { ...data, price: parseFloat(data.price) };
 
         const existing = cart.find(i => i.barcode === product.barcode);

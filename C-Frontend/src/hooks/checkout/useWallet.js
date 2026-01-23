@@ -10,7 +10,7 @@ export function useWallet({ cart, setCart, navigate }) {
 
     const interval = setInterval(async () => {
       try {
-        const res = await api.get(`payment/wallet/status/${walletPendingId}`);
+        const res = await api.get(`/payment/wallet/status/${walletPendingId}`);
         const data = res.data;
 
         if (data.status === "PAID") {
@@ -35,7 +35,7 @@ export function useWallet({ cart, setCart, navigate }) {
   }, [walletPendingId]);
 
   const startWalletPayment = async () => {
-    const res = await api.post("payment/wallet/start", { cart });
+    const res = await api.post("/payment/wallet/start", { cart });
     setWalletPendingId(res.data.pending_id);
     setWaitingWalletApproval(true);
     alert("Wallet payment requested. Waiting for admin approval.");

@@ -11,7 +11,7 @@ export function useCash({ cart, setCart, navigate }) {
 
     const interval = setInterval(async () => {
       try {
-        const res = await api.get(`payment/cash/status/${pendingId}`);
+        const res = await api.get(`/payment/cash/status/${pendingId}`);
         const data = res.data;
 
         if (data.status === "CANCELLED") {
@@ -35,7 +35,7 @@ export function useCash({ cart, setCart, navigate }) {
   }, [pendingId]);
 
   const startCashPayment = async () => {
-    const res = await api.post("payment/cash/start", { cart });
+    const res = await api.post("/payment/cash/start", { cart });
     setPendingId(res.data.pending_id);
     setWaitingForAdmin(true);
     alert("Cash payment requested. Waiting for admin approval.");
@@ -47,7 +47,7 @@ export function useCash({ cart, setCart, navigate }) {
       return;
     }
 
-    const res = await api.post("payment/cash/confirm", { code: cashCode });
+    const res = await api.post("/payment/cash/confirm", { code: cashCode });
     alert(res.data.message);
     setCart([]);
     localStorage.removeItem("cart");
@@ -58,7 +58,7 @@ export function useCash({ cart, setCart, navigate }) {
     if (!pendingId) return;
     if (!window.confirm("Are you sure you want to cancel this cash payment?")) return;
 
-    await api.post(`payment/cash/cancel/${pendingId}`);
+    await api.post(`/payment/cash/cancel/${pendingId}`);
     alert("Cash payment cancelled.");
     resetCash();
   };
