@@ -31,7 +31,7 @@ let chart = null
 ========================= */
 const loadForecast = async () => {
   try {
-    const res = await api.get("ml/forecast")
+    const res = await api.get("/ml/forecast")
     forecast.value = res.data
     categories.value = forecast.value.tomorrow.map(f => f.category)
     await nextTick()
@@ -49,7 +49,7 @@ const runAllModels = async () => {
     loading.value = true
 
     // ✅ ONLY ONE API CALL (Render-safe)
-    await api.post("ml/forecast")
+    await api.post("/ml/forecast")
 
     lastRun.value = new Date().toLocaleString()
     await loadForecast()

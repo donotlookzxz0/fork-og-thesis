@@ -11,7 +11,7 @@ const lastRun = ref(null)
 ========================= */
 const loadRecommendations = async () => {
   try {
-    const res = await api.get("recommendations")
+    const res = await api.get("/recommendations")
     recommendations.value = res.data
   } catch (err) {
     console.error("Load recommendations failed:", err)
@@ -24,7 +24,7 @@ const loadRecommendations = async () => {
 const runRecommender = async () => {
   try {
     loading.value = true
-    await api.post("recommendations/train")
+    await api.post("/recommendations/train")
     lastRun.value = new Date().toLocaleString()
     await loadRecommendations()
   } catch (err) {

@@ -15,7 +15,7 @@ const userId = ref(null) // ✅ added
 
 /* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
-  const res = await api.get("users/me")
+  const res = await api.get("/users/me")
   userId.value = res.data.id
 }
 
@@ -38,7 +38,7 @@ const fetchTransactions = async () => {
   loading.value = true
   error.value = ""
   try {
-    const res = await api.get("sales")
+    const res = await api.get("/sales")
 
     // ✅ MOST RECENT FIRST
     allTransactions.value = res.data.sort(

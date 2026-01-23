@@ -5,11 +5,11 @@ import api from "../services/api"
 const items = ref([])
 
 const load = async () => {
-  items.value = (await api.get("ml/item-movement-forecast")).data
+  items.value = (await api.get("/ml/item-movement-forecast")).data
 }
 
 const run = async () => {
-  await api.post("ml/item-movement-forecast")
+  await api.post("/ml/item-movement-forecast")
   load()
 }
 
