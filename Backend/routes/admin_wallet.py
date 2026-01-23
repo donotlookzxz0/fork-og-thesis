@@ -11,6 +11,7 @@ admin_wallet_bp = Blueprint("admin_wallet", __name__)
 
 # --------------------------------------------------
 # 📥 GET PENDING WALLET PAYMENTS (ADMIN)
+# GET /payment/admin/wallet/pending
 # --------------------------------------------------
 @admin_wallet_bp.route("/pending", methods=["GET"])
 @require_auth(roles=("admin",))
@@ -38,18 +39,28 @@ def get_pending_wallet_payments():
 
 # --------------------------------------------------
 # ✅ APPROVE WALLET PAYMENT (ADMIN)
+# POST /payment/admin/wallet/approve/<id>
 # --------------------------------------------------
 @admin_wallet_bp.route("/approve/<int:pending_id>", methods=["POST"])
 @require_auth(roles=("admin",))
 def approve_wallet_payment(pending_id):
-    AdminWalletPaymentService.approve(pending_id)
-    return jsonify({
-        "message": "Wallet payment approved successfully"
-    }), 200
+    try:
+        AdminWalletPaymentService.approve(pending_id)
+        return jsonify({
+            "message": "Wallet payment approved successfully"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Approval failed",
+            "details": str(e)
+        }), 500
 
 
 # --------------------------------------------------
 # 💰 GET CUSTOMER WALLET BALANCE (ADMIN)
+# GET /payment/admin/wallet/balance/<id>
 # --------------------------------------------------
 @admin_wallet_bp.route("/balance/<int:user_id>", methods=["GET"])
 @require_auth(roles=("admin",))
@@ -69,6 +80,7 @@ def get_customer_wallet_balance(user_id):
 
 # --------------------------------------------------
 # 📜 GET CUSTOMER WALLET TRANSACTIONS (ADMIN)
+# GET /payment/admin/wallet/transactions/<id>
 # --------------------------------------------------
 @admin_wallet_bp.route("/transactions/<int:user_id>", methods=["GET"])
 @require_auth(roles=("admin",))
@@ -97,47 +109,79 @@ def get_customer_wallet_transactions(user_id):
 
 
 # --------------------------------------------------
-# ➕ ADMIN WALLET TOP-UP
+# ➕ ADMIN WALLET TOP-UP  🔥 FIXED
+# POST /payment/admin/wallet/topup
 # --------------------------------------------------
 @admin_wallet_bp.route("/topup", methods=["POST"])
 @require_auth(roles=("admin",))
 def admin_wallet_topup():
     data = request.get_json() or {}
+
     user_id = data.get("user_id")
     amount = data.get("amount")
 
-    if not user_id or not amount or float(amount) <= 0:
-        return jsonify({"error": "Invalid user or amount"}), 400
+    # 🔒 STRICT VALIDATION
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    if amount is None:
+        return jsonify({"error": "amount is required"}), 400
+
+    try:
+        amount = float(amount)
+    except:
+        return jsonify({"error": "Invalid amount"}), 400
+
+    if amount <= 0:
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    wallet = EWallet.query.filter_by(user_id=user_id).first()
-    if not wallet:
-        wallet = EWallet(user_id=user_id, balance=0)
-        db.session.add(wallet)
-        db.session.flush()
+    try:
+        # get or create wallet
+        wallet = EWallet.query.filter_by(user_id=user_id).first()
+        if not wallet:
+            wallet = EWallet(user_id=user_id, balance=0)
+            db.session.add(wallet)
+            db.session.flush()
 
-    wallet.balance += float(amount)
+        # 🔥 CRITICAL FIX — ALWAYS CAST TO FLOAT FIRST
+        current_balance = float(wallet.balance or 0)
+        new_balance = current_balance + amount
+        wallet.balance = new_balance
 
-    tx = EWalletTransaction(
-        wallet_id=wallet.id,
-        amount=float(amount),
-        type="topup",
-        reference_id=None
-    )
+        # record transaction
+        tx = EWalletTransaction(
+            wallet_id=wallet.id,
+            amount=amount,
+            type="topup",
+            reference_id=None
+        )
 
-    db.session.add(tx)
-    db.session.commit()
+        db.session.add(tx)
+        db.session.commit()
 
-    return jsonify({
-        "message": "Wallet topped up successfully",
-        "user_id": user.id,
-        "username": user.username,
-        "new_balance": float(wallet.balance)
-    }), 200
+        return jsonify({
+            "message": "Wallet topped up successfully",
+            "user_id": user.id,
+            "username": user.username,
+            "new_balance": float(wallet.balance)
+        }), 200
 
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Top-up failed",
+            "details": str(e)
+        }), 500
+
+
+# --------------------------------------------------
+# ❌ CANCEL WALLET PAYMENT (ADMIN)
+# POST /payment/admin/wallet/cancel/<id>
+# --------------------------------------------------
 @admin_wallet_bp.route("/cancel/<int:pending_id>", methods=["POST"])
 @require_auth(roles=("admin",))
 def cancel_wallet_payment(pending_id):
