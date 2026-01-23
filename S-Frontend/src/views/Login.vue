@@ -17,10 +17,13 @@ const login = async () => {
   error.value = ""
   loading.value = true
   try {
-    await api.post("/users/login", {
+    // 🔹 Correct production endpoint (with trailing slash)
+    await api.post("/users/login/", {
       username: username.value,
       password: password.value
     })
+
+    // Login success → go to home/dashboard
     router.push("/")
   } catch (err) {
     error.value = err.response?.data?.error || "Login failed"
@@ -115,7 +118,7 @@ label {
   color: #cfcfcf;
 }
 
-/* ========= CRITICAL FIX ========= */
+/* ========= INPUT FIXES ========= */
 .auth-input {
   width: 100%;
 }
