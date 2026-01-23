@@ -6,7 +6,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const controlsRef = useRef(null);
-  const lastScannedRef = useRef(null);;
+  const lastScannedRef = useRef(null);
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [nameInput, setNameInput] = useState("");
@@ -14,11 +14,26 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [successItem, setSuccessItem] = useState(null);
 
-  // Fetch all items once
+  /* =======================
+     LOAD ITEMS FOR SEARCH
+  ======================= */
   useEffect(() => {
-    api.get("/items").then(res => setItems(res.data));
+    const loadItems = async () => {
+      try {
+        const res = await api.get("/items");
+        console.log("SCANNER ITEMS:", res.data);   // 🔥 IMPORTANT DEBUG
+        setItems(res.data);
+      } catch (e) {
+        console.error("Failed to load items for scanner", e);
+      }
+    };
+
+    loadItems();
   }, []);
 
+  /* =======================
+     FETCH PRODUCT BY BARCODE
+  ======================= */
   const fetchProduct = useCallback(
     async (barcode, { resumeScan = false } = {}) => {
       if (!barcode) return;
@@ -39,13 +54,15 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
           if (resumeScan) setIsScanning(true);
         }, 1500);
       } catch (e) {
-        console.error(e);
+        console.error("Fetch product failed", e);
       }
     },
     [cart, onAddToCart, onQuantityChange]
   );
 
-  // Scanner initialization
+  /* =======================
+     CAMERA SCANNER
+  ======================= */
   useEffect(() => {
     if (!isScanning) {
       controlsRef.current?.stop();
@@ -79,10 +96,14 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     };
   }, [isScanning, fetchProduct]);
 
-  // Name suggestions
-  const suggestions = items.filter(i =>
-    i.name.toLowerCase().startsWith(nameInput.toLowerCase())
-  );
+  /* =======================
+     SMART NAME SUGGESTIONS
+  ======================= */
+  const suggestions = items
+    .filter(i =>
+      i.name.toLowerCase().includes(nameInput.toLowerCase())
+    )
+    .slice(0, 5);
 
   return {
     videoRef,
