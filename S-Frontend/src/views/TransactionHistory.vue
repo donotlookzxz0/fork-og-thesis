@@ -29,7 +29,6 @@ const fetchMe = async () => {
     authChecked.value = true
     error.value = "Session expired. Please login again."
 
-    // 🔒 FORCE REDIRECT TO LOGIN
     setTimeout(() => {
       router.push("/login")
     }, 800)
@@ -62,9 +61,17 @@ const prevPage = () => {
 
 watch(page, applyPagination)
 watch(perPage, () => {
-  page.value = 1       // 🔒 reset to page 1 when page size changes
+  page.value = 1
   applyPagination()
 })
+
+/* ---------------- TOTAL PER TRANSACTION ---------------- */
+const getTransactionTotal = (items = []) => {
+  return items.reduce(
+    (sum, item) => sum + item.price_at_sale * item.quantity,
+    0
+  )
+}
 
 /* ---------------- FETCH TRANSACTIONS ---------------- */
 const fetchTransactions = async () => {
@@ -72,10 +79,8 @@ const fetchTransactions = async () => {
   error.value = ""
 
   try {
-    // 🔒 EXACT MATCH TO BACKEND ROUTE — NO TRAILING SLASH
     const res = await api.get("/sales")
 
-    // newest first
     allTransactions.value = res.data.sort(
       (a, b) => new Date(b.date) - new Date(a.date)
     )
@@ -86,7 +91,6 @@ const fetchTransactions = async () => {
   } catch (err) {
     console.error("Transactions error:", err)
 
-    // 🔑 Token expired / unauthorized
     if (err.response?.status === 401) {
       error.value = "Session expired. Please login again."
       setTimeout(() => {
@@ -104,7 +108,6 @@ const fetchTransactions = async () => {
 /* ---------------- INIT ---------------- */
 onMounted(async () => {
   try {
-    // 🔑 MUST AUTH FIRST FOR JWT
     await fetchMe()
     await fetchTransactions()
   } catch {
@@ -115,6 +118,7 @@ onMounted(async () => {
 
 <template>
   <div class="transactions">
+    <!-- Top Controls -->
     <div class="top-controls">
       <button @click="prevPage" :disabled="page === 1">◀ Prev</button>
 
@@ -153,6 +157,7 @@ onMounted(async () => {
           <th>Date</th>
           <th>User</th>
           <th>Items</th>
+          <th style="width:120px;">Total</th>
         </tr>
       </thead>
 
@@ -161,6 +166,8 @@ onMounted(async () => {
           <td>{{ t.transaction_id }}</td>
           <td>{{ new Date(t.date).toLocaleString() }}</td>
           <td>{{ t.user_id }}</td>
+
+          <!-- Items -->
           <td>
             <ul>
               <li v-for="item in t.items" :key="item.item_id">
@@ -169,6 +176,11 @@ onMounted(async () => {
                 — ₱{{ item.price_at_sale }}
               </li>
             </ul>
+          </td>
+
+          <!-- Total -->
+          <td class="total-cell">
+            ₱{{ getTransactionTotal(t.items).toLocaleString() }}
           </td>
         </tr>
       </tbody>
@@ -233,9 +245,20 @@ td {
   vertical-align: top;
 }
 
+th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
 ul {
   padding-left: 16px;
   margin: 0;
+}
+
+.total-cell {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .error {
