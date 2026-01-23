@@ -23,11 +23,11 @@ const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
 
 const createTransaction = (payload) =>
-  api.post("/sales", payload)
+  api.post("/sales/", payload)
 
 /* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
-  const res = await api.get("/users/me")
+  const res = await api.get("/users/me/")
   userId.value = res.data.id
 }
 

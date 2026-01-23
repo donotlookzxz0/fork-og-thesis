@@ -38,7 +38,7 @@ const fetchTransactions = async () => {
   loading.value = true
   error.value = ""
   try {
-    const res = await api.get("/sales")
+    const res = await api.get("/sales/")
 
     // ✅ MOST RECENT FIRST
     allTransactions.value = res.data.sort(
