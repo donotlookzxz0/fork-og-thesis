@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from "vue"
 import api from "../services/api"
 
+/* ---------------- STATE ---------------- */
 const transactions = ref([])
 const allTransactions = ref([])
 
@@ -11,12 +12,18 @@ const error = ref("")
 const page = ref(1)
 const perPage = ref(10)
 
-const userId = ref(null) // ✅ added
+const userId = ref(null)
 
 /* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
-  const res = await api.get("/users/me")
-  userId.value = res.data.id
+  try {
+    const res = await api.get("/users/me")
+    userId.value = res.data.id
+  } catch (err) {
+    console.error("Auth error:", err)
+    error.value = "You are not authenticated"
+    throw err
+  }
 }
 
 /* ---------------- PAGINATION ---------------- */
@@ -33,27 +40,6 @@ const applyPagination = () => {
   transactions.value = allTransactions.value.slice(start, end)
 }
 
-/* ---------------- FETCH ---------------- */
-const fetchTransactions = async () => {
-  loading.value = true
-  error.value = ""
-  try {
-    const res = await api.get("/sales")
-
-    // ✅ MOST RECENT FIRST
-    allTransactions.value = res.data.sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    )
-
-    page.value = 1
-    applyPagination()
-  } catch (err) {
-    error.value = err.response?.data?.error || "Failed to load transactions"
-  } finally {
-    loading.value = false
-  }
-}
-
 const nextPage = () => {
   if (page.value < totalPages.value) page.value++
 }
@@ -65,10 +51,39 @@ const prevPage = () => {
 watch(page, applyPagination)
 watch(perPage, applyPagination)
 
+/* ---------------- FETCH TRANSACTIONS ---------------- */
+const fetchTransactions = async () => {
+  loading.value = true
+  error.value = ""
+
+  try {
+    // 🔒 EXACT MATCH TO BACKEND ROUTE — NO TRAILING SLASH
+    const res = await api.get("/sales")
+
+    // newest first
+    allTransactions.value = res.data.sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    )
+
+    page.value = 1
+    applyPagination()
+  } catch (err) {
+    console.error("Transactions error:", err)
+    error.value = err.response?.data?.error || "Failed to load transactions"
+  } finally {
+    loading.value = false
+  }
+}
+
 /* ---------------- INIT ---------------- */
 onMounted(async () => {
-  await fetchMe()        // ✅ added
-  fetchTransactions()
+  try {
+    // 🔑 MUST AUTH FIRST FOR JWT
+    await fetchMe()
+    await fetchTransactions()
+  } catch {
+    // already handled in fetchMe
+  }
 })
 </script>
 
