@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api/",        // 🔥 FORCE VERCEL PROXY
+  baseURL: "/api",          // ✅ NO TRAILING SLASH (IMPORTANT)
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
