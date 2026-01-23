@@ -17,8 +17,8 @@ const login = async () => {
   error.value = ""
   loading.value = true
   try {
-    // 🔹 Correct production endpoint (with trailing slash)
-    await api.post("/users/login/", {
+    // 🔥 FIXED: correct endpoint (NO trailing slash)
+    await api.post("/users/login", {
       username: username.value,
       password: password.value
     })
