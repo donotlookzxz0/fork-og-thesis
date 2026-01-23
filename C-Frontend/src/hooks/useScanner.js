@@ -21,7 +21,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     const loadItems = async () => {
       try {
         const res = await api.get("/items");
-        console.log("SCANNER ITEMS:", res.data);   // 🔥 IMPORTANT DEBUG
+        console.log("SCANNER ITEMS:", res.data);   // 🔥 keep for debugging
         setItems(res.data);
       } catch (e) {
         console.error("Failed to load items for scanner", e);
@@ -97,12 +97,28 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   }, [isScanning, fetchProduct]);
 
   /* =======================
-     SMART NAME SUGGESTIONS
+     🔥 SMART NAME SUGGESTIONS
+     (ranked by closeness)
   ======================= */
   const suggestions = items
-    .filter(i =>
-      i.name.toLowerCase().includes(nameInput.toLowerCase())
-    )
+    .map(i => {
+      const name = i.name.toLowerCase();
+      const q = nameInput.toLowerCase();
+
+      let score = 0;
+
+      // Best: starts with
+      if (name.startsWith(q)) score = 3;
+      // Medium: word match
+      else if (name.includes(" " + q)) score = 2;
+      // Weak: anywhere
+      else if (name.includes(q)) score = 1;
+      else score = 0;
+
+      return { ...i, _score: score };
+    })
+    .filter(i => i._score > 0)
+    .sort((a, b) => b._score - a._score)
     .slice(0, 5);
 
   return {
