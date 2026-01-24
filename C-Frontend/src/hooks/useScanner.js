@@ -17,7 +17,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   /* LOAD ITEMS ONCE */
   useEffect(() => {
     api
-      .get("/items")
+      .get("/items/")
       .then((res) => setItems(res.data || []))
       .catch(() => setItems([]));
   }, []);
