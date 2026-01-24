@@ -28,6 +28,7 @@ CORS(
     supports_credentials=True,
     origins=[
         "https://app.pimart.software",  # Custom domain (same-site cookies - RECOMMENDED)
+        "https://admin.pimart.software",        # NEW admin / server frontend
         "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
         "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
     ],
