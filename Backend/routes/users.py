@@ -12,12 +12,15 @@ JWT_SECRET = "super-secret"
 ACCESS_EXPIRES = timedelta(minutes=15)
 REFRESH_EXPIRES = timedelta(days=7)
 
+# 🔑 PRODUCTION COOKIE CONFIG (CROSS-DEVICE SAFE)
 COOKIE_KWARGS = dict(
     httponly=True,
     samesite="None",
     secure=True,
-    path="/"
+    path="/",
+    domain=".pimart.software"
 )
+
 
 def create_token(user_id, token_type="access"):
     payload = {
@@ -27,6 +30,9 @@ def create_token(user_id, token_type="access"):
         + (ACCESS_EXPIRES if token_type == "access" else REFRESH_EXPIRES),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+# ---------------- AUTH CHECK ----------------
 
 @user_routes.route("/me", methods=["GET"])
 @require_auth(roles=("admin",))
@@ -39,6 +45,7 @@ def me_admin():
         "role": user.role
     }), 200
 
+
 @user_routes.route("/me/customer", methods=["GET"])
 @require_auth(roles=("customer",))
 def me_customer():
@@ -49,6 +56,9 @@ def me_customer():
         "username": user.username,
         "role": user.role
     }), 200
+
+
+# ---------------- USERS CRUD ----------------
 
 @user_routes.route("", methods=["GET"])
 @user_routes.route("/", methods=["GET"])
@@ -66,6 +76,7 @@ def get_users():
         for u in users
     ]), 200
 
+
 @user_routes.route("/<int:id>", methods=["GET"])
 @require_auth(roles=("admin",))
 def get_user(id):
@@ -80,6 +91,7 @@ def get_user(id):
         "created_at": user.created_at,
         "updated_at": user.updated_at,
     }), 200
+
 
 @user_routes.route("", methods=["POST"])
 @user_routes.route("/", methods=["POST"])
@@ -103,6 +115,9 @@ def create_user():
     db.session.commit()
 
     return jsonify({"message": "user created", "id": user.id}), 201
+
+
+# ---------------- LOGIN ----------------
 
 @user_routes.route("/login", methods=["POST"])
 def login():
@@ -128,6 +143,9 @@ def login():
 
     return resp, 200
 
+
+# ---------------- REGISTER ----------------
+
 @user_routes.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
@@ -148,6 +166,9 @@ def register():
     db.session.commit()
 
     return jsonify({"message": "Account created"}), 201
+
+
+# ---------------- REFRESH TOKEN ----------------
 
 @user_routes.route("/refresh", methods=["POST"])
 def refresh():
@@ -174,6 +195,9 @@ def refresh():
     except jwt.InvalidTokenError:
         return jsonify({"error": "invalid refresh token"}), 401
 
+
+# ---------------- LOGOUT (FIXED) ----------------
+
 @user_routes.route("/logout", methods=["POST"])
 def logout():
     refresh_token = request.cookies.get("refresh_token")
@@ -189,9 +213,15 @@ def logout():
             pass
 
     resp = make_response(jsonify({"message": "logged out"}))
-    resp.delete_cookie("access_token", **COOKIE_KWARGS)
-    resp.delete_cookie("refresh_token", **COOKIE_KWARGS)
+
+    # 🔑 DELETE COOKIES PROPERLY (ONLY PATH + DOMAIN)
+    resp.delete_cookie("access_token", path="/", domain=".pimart.software")
+    resp.delete_cookie("refresh_token", path="/", domain=".pimart.software")
+
     return resp, 200
+
+
+# ---------------- DELETE USER ----------------
 
 @user_routes.route("/<int:id>", methods=["DELETE"])
 @require_auth(roles=("admin",))
