@@ -12,7 +12,7 @@
 .recommended-title {
   font-size: 2rem;
   color: #000000;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 8px;
 }
 
@@ -52,7 +52,7 @@
 
 .item-name {
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #000000;
   margin-bottom: 4px;
 }
@@ -127,7 +127,6 @@
 
   .item-name {
     font-size: 1rem;
-    font-weight: 600;
     margin-bottom: 4px;
   }
 
