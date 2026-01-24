@@ -27,8 +27,9 @@ CORS(
     app,
     supports_credentials=True,
     origins=[
-        "https://digital-ocean-react.vercel.app",
-        "https://server-frontend-digi-ocean.vercel.app",
+        "https://app.pimart.software",  # Custom domain (same-site cookies - RECOMMENDED)
+        "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
+        "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
     ],
     allow_headers=["Content-Type", "Authorization"],
 )
