@@ -9,8 +9,34 @@ import { useToast } from "primevue/usetoast"
 const toast = useToast()
 
 const recommendations = ref([])
+const usersMap = ref({})   // 🔑 id -> username lookup
 const loading = ref(false)
 const lastRun = ref(null)
+
+/* =========================
+   LOAD USERS (FOR NAME MAP)
+========================= */
+const loadUsers = async () => {
+  try {
+    const res = await api.get("/users")
+
+    // Build { id: username } map
+    usersMap.value = res.data.reduce((map, u) => {
+      map[u.id] = u.username
+      return map
+    }, {})
+
+  } catch (err) {
+    console.error("Load users failed:", err)
+
+    toast.add({
+      severity: "error",
+      summary: "User Load Failed",
+      detail: "Failed to load user names",
+      life: 3000,
+    })
+  }
+}
 
 /* =========================
    LOAD RECOMMENDATIONS
@@ -20,7 +46,6 @@ const loadRecommendations = async () => {
     const res = await api.get("/recommendations")
     recommendations.value = res.data
 
-    // ✅ LOADED SUCCESS
     toast.add({
       severity: "info",
       summary: "Recommendations Loaded",
@@ -60,7 +85,6 @@ const runRecommender = async () => {
     await api.post("/recommendations/train")
     lastRun.value = new Date().toLocaleString()
 
-    // ✅ TRAINING SUCCESS
     toast.add({
       severity: "success",
       summary: "Training Completed",
@@ -85,7 +109,13 @@ const runRecommender = async () => {
   }
 }
 
-onMounted(loadRecommendations)
+/* =========================
+   INIT
+========================= */
+onMounted(async () => {
+  await loadUsers()           // 🔑 load usernames first
+  await loadRecommendations()
+})
 </script>
 
 <template>
@@ -94,7 +124,7 @@ onMounted(loadRecommendations)
     <!-- 🔔 TOAST POPUPS -->
     <Toast position="top-center" />
 
-    <!-- 🔥 TITLE MATCHING YOUR ADMIN STYLE -->
+    <!-- 🔥 TITLE -->
     <h1 class="title">
       <i class="pi pi-brain"></i>
       AI Recommendations
@@ -121,7 +151,11 @@ onMounted(loadRecommendations)
 
     <div class="grid">
       <div v-for="r in recommendations" :key="r.user_id" class="card">
-        <h3>User #{{ r.user_id }}</h3>
+
+        <!-- 🔥 USER NAME INSTEAD OF ID -->
+        <h3>
+          {{ usersMap[r.user_id] || `User #${r.user_id}` }}
+        </h3>
 
         <ul>
           <li v-for="item in r.items" :key="item.id">
@@ -139,7 +173,7 @@ onMounted(loadRecommendations)
   padding: 20px;
 }
 
-/* 🔥 MATCH TITLE STYLE WITH OTHER PAGES */
+/* TITLE STYLE */
 .title {
   color: #ffffff;
   font-size: 1.8rem;
@@ -162,7 +196,7 @@ onMounted(loadRecommendations)
   color: #aaa;
 }
 
-/* BUTTON STYLE (MATCH INVENTORY / WALLET) */
+/* BUTTON */
 .btn {
   height: 48px;
   padding: 0 18px;
@@ -200,7 +234,7 @@ onMounted(loadRecommendations)
   font-size: 0.8rem;
 }
 
-/* EMPTY STATE */
+/* EMPTY */
 .empty {
   color: #9ca3af;
   padding: 40px 0;
