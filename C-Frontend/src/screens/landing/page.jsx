@@ -16,7 +16,7 @@ const LandingPage = () => {
         <FaShoppingCart className="landing-icon" />
 
         <h2 className="landing-title">
-          Welcome to PiMart
+          Welcome to GFriend's Korean Mart!
         </h2>
 
         <p className="landing-description">
