@@ -15,20 +15,28 @@
   justify-content: space-between;
 }
 
+/* Logo + brand */
 .logo {
   font-size: 1.8rem;
   font-weight: 500;
   color: #fff;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
 }
 
-.logo-icon {
-  font-size: 1.6rem;
+/* Circle logo image (replaces cart icon) */
+.logo-image {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 4px;
 }
 
+/* Logout button */
 .logout-btn {
   background: transparent;
   border: none;
@@ -42,6 +50,7 @@
   color: #000000;
 }
 
+/* Hamburger */
 .hamburger-btn {
   background: transparent;
   border: none;
@@ -51,6 +60,7 @@
   display: none; 
 }
 
+/* Nav links */
 .nav-links {
   display: flex;
   gap: 20px;
@@ -70,6 +80,7 @@
   text-decoration: underline;
 }
 
+/* Mobile layout */
 @media (max-width: 480px) {
   .header-content {
     flex-direction: row;
@@ -105,6 +116,7 @@
     padding: 12px 0;
   }
 
+  /* Center logo on mobile */
   .logo {
     position: absolute;
     left: 50%;

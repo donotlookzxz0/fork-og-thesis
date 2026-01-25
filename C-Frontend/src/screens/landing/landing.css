@@ -16,24 +16,13 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
-.landing-icon {
-  font-size: 42px;
-  color: #ea1e25;
-  margin-bottom: 16px;
-}
-
-.landing-title {
-  color: #000000;
-  font-size: clamp(1.6rem, 4vw, 2rem);
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.landing-description {
-  color: #757575;
-  font-size: clamp(0.95rem, 2.5vw, 1.05rem);
-  margin-bottom: 32px;
-  line-height: 1.6;
+/* Rectangle logo styling */
+.landing-logo {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 40px auto;
+  display: block;
+  object-fit: contain;
 }
 
 .landing-btn {

@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FaShoppingCart } from "react-icons/fa";
 import "./landing.css";
 
 const LandingPage = () => {
@@ -13,16 +12,13 @@ const LandingPage = () => {
   return (
     <div className="landing">
       <div className="landing-card">
-        <FaShoppingCart className="landing-icon" />
 
-        <h2 className="landing-title">
-          Welcome to GFriend's Korean Mart!
-        </h2>
-
-        <p className="landing-description">
-          A smart inventory and self-checkout system designed for faster,
-          simpler, and more efficient shopping.
-        </p>
+        {/* Rectangle Logo */}
+        <img
+          src="/rectangle.png"
+          alt="GFriends Korean Mart"
+          className="landing-logo"
+        />
 
         <button
           className="landing-btn"
@@ -30,6 +26,7 @@ const LandingPage = () => {
         >
           Start Shopping
         </button>
+
       </div>
     </div>
   );
