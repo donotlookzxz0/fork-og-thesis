@@ -25,7 +25,7 @@ export default function Success() {
           Total Paid: ₱{totalPrice.toFixed(2)}
         </h3>
 
-        <Link to="/scanner" className="success-btn">
+        <Link to="/buy" className="success-btn">
           Back to Scanner
         </Link>
       </div>
