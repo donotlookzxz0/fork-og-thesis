@@ -3,9 +3,12 @@ import { ref, onMounted, watch, computed, nextTick } from "vue"
 import api from "../services/api"
 import { Chart } from "chart.js/auto"
 
-/* =========================
-   STATE
-========================= */
+// 🔔 PrimeVue Toast
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
+
+const toast = useToast()
+
 const categories = ref([])
 const selectedCategory = ref("")
 const forecast = ref(null)
@@ -19,51 +22,77 @@ const demand = ref({
 const lastRun = ref(null)
 const loading = ref(false)
 
-/* =========================
-   CHART STATE
-========================= */
 const horizon = ref("30") // 1 | 7 | 30
 const canvas = ref(null)
 let chart = null
 
-/* =========================
-   LOAD FORECAST
-========================= */
+// 🔄 LOAD FORECAST (REFRESH)
 const loadForecast = async () => {
   try {
     const res = await api.get("/ml/forecast")
     forecast.value = res.data
     categories.value = forecast.value.tomorrow.map(f => f.category)
+
     await nextTick()
     renderChart()
+
+    toast.add({
+      severity: "success",
+      summary: "Refreshed",
+      detail: "Forecast data updated",
+      life: 2500
+    })
+
   } catch (err) {
     console.error("Load forecast failed:", err)
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: "Failed to load forecast data",
+      life: 3000
+    })
   }
 }
 
-/* =========================
-   RUN AI MODEL (SAFE)
-========================= */
+// 🤖 RUN ALL MODELS
 const runAllModels = async () => {
   try {
     loading.value = true
 
-    // ✅ ONLY ONE API CALL (Render-safe)
+    toast.add({
+      severity: "info",
+      summary: "Running Model",
+      detail: "AI forecast is processing...",
+      life: 2000
+    })
+
     await api.post("/ml/forecast")
 
     lastRun.value = new Date().toLocaleString()
     await loadForecast()
     computeDemand()
+
+    toast.add({
+      severity: "success",
+      summary: "Completed",
+      detail: "Forecast updated successfully",
+      life: 3000
+    })
+
   } catch (err) {
     console.error("AI run failed:", err)
+    toast.add({
+      severity: "error",
+      summary: "AI Error",
+      detail: "Failed to run forecasting model",
+      life: 3000
+    })
   } finally {
     loading.value = false
   }
 }
 
-/* =========================
-   COMPUTE DEMAND
-========================= */
+// 📊 COMPUTE DEMAND
 const computeDemand = () => {
   if (!forecast.value || !selectedCategory.value) return
 
@@ -78,15 +107,14 @@ const computeDemand = () => {
   }
 }
 
-/* =========================
-   DERIVED DATA
-========================= */
+// 🔥 DEMAND LEVEL
 const demandLevel = computed(() => {
   if (demand.value.next30 > 15) return "High"
   if (demand.value.next30 >= 5) return "Medium"
   return "Low"
 })
 
+// 💡 SUGGESTIONS
 const suggestions = computed(() => {
   if (!selectedCategory.value) return []
   if (demandLevel.value === "High") {
@@ -108,9 +136,7 @@ const suggestions = computed(() => {
   ]
 })
 
-/* =========================
-   TOP DEMAND
-========================= */
+// ⭐ TOP DEMAND
 const topDemand = computed(() => {
   if (!forecast.value) return []
 
@@ -130,9 +156,7 @@ const topDemand = computed(() => {
     .slice(0, 5)
 })
 
-/* =========================
-   CHART DATA
-========================= */
+// 📈 CHART DATA
 const chartData = computed(() => {
   if (!forecast.value) return []
   if (horizon.value === "1") return forecast.value.tomorrow
@@ -140,6 +164,7 @@ const chartData = computed(() => {
   return forecast.value.next_30_days
 })
 
+// 🥧 RENDER CHART
 const renderChart = () => {
   if (!canvas.value || !chartData.value.length) return
   if (chart) chart.destroy()
@@ -190,7 +215,11 @@ onMounted(loadForecast)
 
 <template>
   <div class="page">
-    <h1>Demand Forecast (Category-Based)</h1>
+
+    <!-- 🔔 TOAST -->
+    <Toast position="top-center" />
+
+    <h1 class="title"><i class="pi pi-chart-pie"></i> Demand Forecast</h1>
 
     <!-- CONTROLS -->
     <div class="controls">
@@ -201,7 +230,14 @@ onMounted(loadForecast)
         </option>
       </select>
 
-      <button @click="runAllModels" :disabled="loading">
+      <!-- 🔄 REFRESH -->
+      <button class="btn secondary" @click="loadForecast" :disabled="loading">
+        <i class="pi pi-refresh"></i> Refresh
+      </button>
+
+      <!-- 🤖 RUN AI -->
+      <button class="btn primary" @click="runAllModels" :disabled="loading">
+        <i class="pi pi-cog"></i>
         {{ loading ? "Running AI..." : "Run AI Forecast" }}
       </button>
 
@@ -277,12 +313,32 @@ onMounted(loadForecast)
         </div>
       </div>
     </div>
+
+    <!-- ⏳ LOADER OVERLAY -->
+    <div v-if="loading" class="loader-overlay">
+      <div class="loader-box">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Running AI Forecast...</span>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
 .page { padding: 20px; }
 
+/* Title */
+.title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Controls */
 .controls {
   display: flex;
   gap: 12px;
@@ -290,14 +346,43 @@ onMounted(loadForecast)
   margin-bottom: 20px;
 }
 
+.controls select {
+  height: 48px;
+  padding: 0 12px;
+}
+
 .timestamp { font-size: 0.85rem; color: #aaa; }
 
+/* Buttons */
+.btn {
+  height: 48px;
+  padding: 0 18px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primary {
+  background: #3ddc97;
+  border: none;
+}
+
+.secondary {
+  background: #444;
+  color: #fff;
+  border: none;
+}
+
+/* Layout */
 .layout {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 24px;
 }
 
+/* Cards */
 .card {
   background: #1f1f1f;
   border: 1px solid #333;
@@ -306,14 +391,11 @@ onMounted(loadForecast)
   margin-bottom: 20px;
 }
 
-.chart-card {
-  height: 360px;
-}
+/* Chart */
+.chart-card { height: 360px; }
+.chart-wrapper { height: 260px; }
 
-.chart-wrapper {
-  height: 260px;
-}
-
+/* Badge */
 .badge {
   margin-left: 10px;
   padding: 4px 8px;
@@ -324,6 +406,7 @@ onMounted(loadForecast)
 .badge.medium { background: #f39c12; }
 .badge.low { background: #27ae60; }
 
+/* Stats */
 .stats {
   display: flex;
   justify-content: space-between;
@@ -332,6 +415,7 @@ onMounted(loadForecast)
 .stat span { font-size: 0.85rem; color: #aaa; }
 .stat strong { font-size: 1.8rem; }
 
+/* Table */
 .top-table {
   width: 100%;
   border-collapse: collapse;
@@ -344,10 +428,40 @@ onMounted(loadForecast)
 .top-table th { font-size: 0.85rem; color: #aaa; }
 .emphasis { font-weight: bold; }
 
+/* Chart Header */
 .chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+/* ⏳ Loader */
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.loader-box {
+  background: #1f1f1f;
+  border: 1px solid #333;
+  padding: 24px 36px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+.loader-box i {
+  font-size: 2rem;
+  color: #3ddc97;
 }
 </style>

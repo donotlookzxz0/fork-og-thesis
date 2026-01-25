@@ -52,12 +52,13 @@ class MovementNet(nn.Module):
 
 
 # -----------------------------
-# TRAIN + PREDICT (30 DAYS ONLY)
+# TRAIN + PREDICT (ALL ITEMS, 30-DAY WINDOW)
 # -----------------------------
 def run_item_movement_forecast():
     today = date.today()
     cutoff_date = today - timedelta(days=30)
 
+    # 🔥 LEFT JOIN — INCLUDE ALL ITEMS
     rows = (
         db.session.query(
             Item.id.label("item_id"),
@@ -67,9 +68,11 @@ def run_item_movement_forecast():
             SalesTransactionItem.quantity.label("quantity"),
         )
         .select_from(Item)
-        .join(SalesTransactionItem, Item.id == SalesTransactionItem.item_id)
-        .join(SalesTransaction, SalesTransaction.id == SalesTransactionItem.transaction_id)
-        .filter(SalesTransaction.date >= cutoff_date)
+        .outerjoin(SalesTransactionItem, Item.id == SalesTransactionItem.item_id)
+        .outerjoin(SalesTransaction, SalesTransaction.id == SalesTransactionItem.transaction_id)
+        .filter(
+            (SalesTransaction.date >= cutoff_date) | (SalesTransaction.date == None)
+        )
         .all()
     )
 
@@ -79,24 +82,44 @@ def run_item_movement_forecast():
     df = pd.DataFrame(rows, columns=[
         "item_id", "item_name", "category", "date", "quantity"
     ])
-    df["date"] = pd.to_datetime(df["date"]).dt.date
+
+    # Convert date safely
+    df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
 
     features = []
     labels = []
     meta = []
 
     # -----------------------------
-    # FEATURE ENGINEERING (STABLE 3-CLASS LOGIC)
+    # FEATURE ENGINEERING (ALL ITEMS)
     # -----------------------------
     for item_id, g in df.groupby("item_id"):
-        total_sold = int(g["quantity"].sum())
+
+        # Handle missing sales
+        total_sold = int(g["quantity"].fillna(0).sum())
         avg_daily_sales = float(total_sold / 30)
+
+        # If never sold → classify as SLOW
+        if g["date"].notna().sum() == 0:
+            features.append([
+                0.0,
+                999  # very long time since last sale
+            ])
+            labels.append(LABEL_MAP["Slow"])
+
+            meta.append({
+                "item_id": int(item_id),
+                "item_name": g["item_name"].iloc[0],
+                "category": g["category"].iloc[0],
+                "avg_daily_sales": 0,
+                "days_since_last_sale": 999
+            })
+            continue
+
+        # Normal case — has sales history
         days_since_last_sale = int((today - g["date"].max()).days)
 
         # ✅ STABLE LABELING RULES
-        # Fast  = consistent + recent demand
-        # Medium = moderate / emerging demand
-        # Slow = low or irregular demand
         if (
             avg_daily_sales >= 0.5
             and total_sold >= 15
@@ -126,8 +149,8 @@ def run_item_movement_forecast():
             "days_since_last_sale": days_since_last_sale
         })
 
-    # Minimum items required
-    if len(features) < 5:
+    # If too small, still proceed
+    if len(features) < 2:
         return None
 
     dataset = MovementDataset(features, labels)
@@ -148,7 +171,7 @@ def run_item_movement_forecast():
             optimizer.step()
 
     # -----------------------------
-    # SAVE PREDICTIONS
+    # SAVE PREDICTIONS (ALL ITEMS)
     # -----------------------------
     AIItemMovement.query.delete()
 

@@ -3,6 +3,14 @@ import { ref, onMounted, computed } from "vue"
 import { useRouter } from "vue-router"
 import api from "../services/api"
 
+// PrimeVue Toast + Confirm
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
+import ConfirmDialog from "primevue/confirmdialog"
+import { useConfirm } from "primevue/useconfirm"
+
+const toast = useToast()
+const confirm = useConfirm()
 const router = useRouter()
 
 const username = ref("")
@@ -11,7 +19,6 @@ const amount = ref("")
 const loading = ref(false)
 const users = ref([])
 const balance = ref(0)
-const error = ref("")
 
 /* =========================
    FETCH USERS (ADMIN ONLY)
@@ -24,10 +31,20 @@ const fetchUsers = async () => {
     console.error("Users fetch error:", err)
 
     if (err.response?.status === 401) {
-      error.value = "Session expired. Please login again."
+      toast.add({
+        severity: "error",
+        summary: "Session Expired",
+        detail: "Please login again",
+        life: 3000,
+      })
       setTimeout(() => router.push("/login"), 800)
     } else {
-      error.value = err.response?.data?.error || "Failed to load users"
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: err.response?.data?.error || "Failed to load users",
+        life: 3000,
+      })
     }
   }
 }
@@ -53,7 +70,6 @@ const selectUser = async (u) => {
     selectedUser.value = u
     username.value = u.username
     balance.value = 0
-    error.value = ""
 
     const res = await api.get(
       `/payment/admin/wallet/balance/${u.id}`
@@ -65,10 +81,20 @@ const selectUser = async (u) => {
     console.error("Balance fetch error:", err)
 
     if (err.response?.status === 401) {
-      error.value = "Session expired. Please login again."
+      toast.add({
+        severity: "error",
+        summary: "Session Expired",
+        detail: "Please login again",
+        life: 3000,
+      })
       setTimeout(() => router.push("/login"), 800)
     } else {
-      error.value = err.response?.data?.error || "Failed to fetch balance"
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: err.response?.data?.error || "Failed to fetch balance",
+        life: 3000,
+      })
     }
   }
 }
@@ -81,65 +107,104 @@ const resetForm = () => {
   selectedUser.value = null
   amount.value = ""
   balance.value = 0
-  error.value = ""
 }
 
 /* =========================
-   CASH IN
+   CASH IN  (MODERN CONFIRM)
 ========================= */
 const cashIn = async () => {
-  if (!selectedUser.value || !amount.value) return
-  if (Number(amount.value) <= 0) return
-
-  if (
-    !confirm(
-      `Cash in ₱${amount.value} to ${selectedUser.value.username}?`
-    )
-  ) return
-
-  loading.value = true
-  error.value = ""
-
-  try {
-    const res = await api.post("/payment/admin/wallet/topup", {
-      user_id: selectedUser.value.id,
-      amount: Number(amount.value),
+  if (!selectedUser.value) {
+    toast.add({
+      severity: "warn",
+      summary: "No User",
+      detail: "Please select a user first",
+      life: 2000,
     })
-
-    alert(
-      `Cash-in successful!\n\nUser: ${selectedUser.value.username}\nNew Balance: ₱${res.data.new_balance}`
-    )
-
-    /* ✅ AUTO RESET AFTER SUCCESS */
-    resetForm()
-
-  } catch (err) {
-    console.error("Topup error:", err)
-
-    if (err.response?.status === 401) {
-      error.value = "Session expired. Please login again."
-      setTimeout(() => router.push("/login"), 800)
-    } else {
-      error.value = err.response?.data?.error || "Cash-in failed"
-    }
-
-  } finally {
-    loading.value = false
+    return
   }
+
+  if (!amount.value || Number(amount.value) <= 0) {
+    toast.add({
+      severity: "warn",
+      summary: "Invalid Amount",
+      detail: "Enter a valid cash-in amount",
+      life: 2000,
+    })
+    return
+  }
+
+  // 🔥 REPLACED BROWSER CONFIRM WITH PRIMEVUE CONFIRM DIALOG
+  confirm.require({
+    header: "Confirm Cash-In",
+    message: `Cash in ₱${amount.value} to ${selectedUser.value.username}?`,
+    icon: "pi pi-wallet",
+    acceptLabel: "Confirm",
+    rejectLabel: "Cancel",
+    acceptClass: "p-button-success",
+    rejectClass: "p-button-danger",
+    position: "top",
+
+    accept: async () => {
+      loading.value = true
+
+      try {
+        const res = await api.post("/payment/admin/wallet/topup", {
+          user_id: selectedUser.value.id,
+          amount: Number(amount.value),
+        })
+
+        // ✅ SUCCESS POPUP (CENTER STYLE)
+        toast.add({
+          severity: "success",
+          summary: "Cash-In Successful",
+          detail: `New Balance: ₱${res.data.new_balance}`,
+          life: 3000,
+        })
+
+        /* ✅ AUTO RESET AFTER SUCCESS */
+        resetForm()
+
+      } catch (err) {
+        console.error("Topup error:", err)
+
+        if (err.response?.status === 401) {
+          toast.add({
+            severity: "error",
+            summary: "Session Expired",
+            detail: "Please login again",
+            life: 3000,
+          })
+          setTimeout(() => router.push("/login"), 800)
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Cash-In Failed",
+            detail: err.response?.data?.error || "Cash-in failed",
+            life: 3000,
+          })
+        }
+
+      } finally {
+        loading.value = false
+      }
+    }
+  })
 }
 </script>
 
 <template>
   <div class="wallet-wrapper">
+
+    <!-- 🔔 TOAST POPUPS (CENTER STYLE) -->
+    <Toast position="top-center" />
+
+    <!-- 🔐 CONFIRM DIALOG -->
+    <ConfirmDialog />
+
     <div class="wallet">
-      <h1>
-        <i class="pi pi-wallet"></i>
-        Wallet Cash-In
-      </h1>
+      <h1 class="title"><i class="pi pi-wallet"></i>Wallet Cash-In</h1>
 
       <div class="card">
-        <!-- ❌ Error -->
-        <p v-if="error" class="error">{{ error }}</p>
 
         <!-- USER SEARCH -->
         <div class="input-icon">
@@ -225,12 +290,6 @@ const cashIn = async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.error {
-  color: #ef4444;
-  font-weight: 500;
-  text-align: center;
 }
 
 .input-icon {
@@ -321,5 +380,15 @@ const cashIn = async () => {
   font-size: 13px;
   color: #666;
   text-align: center;
+}
+
+/* Match title size with other pages */
+.title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 </style>

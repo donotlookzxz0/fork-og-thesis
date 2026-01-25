@@ -31,6 +31,8 @@ CORS(
         "https://admin.pimart.software",        # NEW admin / server frontend
         "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
         "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
+        "http://localhost:5173",  # Local dev (same-site cookies)    
+        "http://localhost:5174"
     ],
     allow_headers=["Content-Type", "Authorization"],
 )

@@ -58,6 +58,7 @@ def run_stockout_risk_forecast():
     today = date.today()
     cutoff_date = today - timedelta(days=30)
 
+    # 🔥 LEFT JOIN — INCLUDE ALL ITEMS
     rows = (
         db.session.query(
             Item.id.label("item_id"),
@@ -68,9 +69,11 @@ def run_stockout_risk_forecast():
             SalesTransaction.date.label("date"),
         )
         .select_from(Item)
-        .join(SalesTransactionItem, Item.id == SalesTransactionItem.item_id)
-        .join(SalesTransaction, SalesTransaction.id == SalesTransactionItem.transaction_id)
-        .filter(SalesTransaction.date >= cutoff_date)
+        .outerjoin(SalesTransactionItem, Item.id == SalesTransactionItem.item_id)
+        .outerjoin(SalesTransaction, SalesTransaction.id == SalesTransactionItem.transaction_id)
+        .filter(
+            (SalesTransaction.date >= cutoff_date) | (SalesTransaction.date == None)
+        )
         .all()
     )
 
@@ -91,12 +94,34 @@ def run_stockout_risk_forecast():
     meta = []
 
     # -----------------------------
-    # FEATURE ENGINEERING (LAST 30 DAYS)
+    # FEATURE ENGINEERING (ALL ITEMS)
     # -----------------------------
     for item_id, g in df.groupby("item_id"):
-        total_sold_30d = float(g["sold_qty"].sum())
+
+        # Handle missing sales safely
+        total_sold_30d = float(g["sold_qty"].fillna(0).sum())
         current_stock = int(g["current_stock"].iloc[0])
 
+        # 🟢 CASE 1 — NEVER SOLD (NEW / NO HISTORY)
+        if total_sold_30d == 0:
+            features.append([
+                current_stock,
+                0.0,
+                100.0
+            ])
+            labels.append(LABEL_MAP["Low"])
+
+            meta.append({
+                "item_id": int(item_id),
+                "item_name": g["item_name"].iloc[0],
+                "category": g["category"].iloc[0],
+                "current_stock": current_stock,
+                "avg_daily_sales": 0,
+                "days_of_stock_left": 100
+            })
+            continue
+
+        # 🟡 NORMAL CASE — HAS SALES HISTORY
         initial_stock = total_sold_30d + current_stock
         if initial_stock <= 0:
             continue
@@ -128,7 +153,8 @@ def run_stockout_risk_forecast():
             "days_of_stock_left": remaining_percentage
         })
 
-    if len(features) < 5:
+    # If very small dataset, still proceed
+    if len(features) < 2:
         return None
 
     dataset = StockoutDataset(features, labels)
@@ -149,7 +175,7 @@ def run_stockout_risk_forecast():
             optimizer.step()
 
     # -----------------------------
-    # SAVE PREDICTIONS
+    # SAVE PREDICTIONS (ALL ITEMS)
     # -----------------------------
     AIStockoutRisk.query.delete()
 

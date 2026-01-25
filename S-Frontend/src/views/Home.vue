@@ -9,16 +9,16 @@ const go = (path) => router.push(path)
 
 <template>
   <div class="home">
-    <h1 class="title">Welcome, G friends</h1>
+    <h1 class="title">Welcome to G-Friends</h1>
     <p class="subtitle">Pi-Mart Smart Self-Service Dashboard</p>
 
-    <!-- STYLISH BENTO GRID -->
+    <!-- BENTO GRID -->
     <div class="bento">
-      <!-- POS -->
+      <!-- POS (BIG LEFT) -->
       <Card class="bento-card pos gradient-orange">
         <template #title>POS</template>
         <template #content>
-          Fast cashier operations with barcode scanning.
+          Fast cashier operations with barcode scanning and live totals.
         </template>
         <template #footer>
           <Button label="Open POS" icon="pi pi-shopping-cart" @click="go('/pos')" />
@@ -51,14 +51,10 @@ const go = (path) => router.push(path)
       <Card class="bento-card wide gradient-green">
         <template #title>Demand Forecast</template>
         <template #content>
-          Time-series demand prediction by category.
+          Time-series demand prediction by product category.
         </template>
         <template #footer>
-          <Button
-            icon="pi pi-chart-line"
-            label="Analyze"
-            @click="go('/analytics/demand')"
-          />
+          <Button icon="pi pi-chart-line" label="Analyze" @click="go('/analytics/demand')" />
         </template>
       </Card>
 
@@ -69,19 +65,48 @@ const go = (path) => router.push(path)
           Fast, medium, slow movers.
         </template>
         <template #footer>
-          <Button
-            icon="pi pi-sort-amount-up"
-            label="View"
-            @click="go('/analytics/movement')"
-          />
+          <Button icon="pi pi-sort-amount-up" label="View" @click="go('/analytics/movement')" />
         </template>
       </Card>
 
-      <!-- STOCKOUT -->
-      <Card class="bento-card wide gradient-red">
+      <!-- PAYMENT -->
+      <Card class="bento-card small gradient-indigo">
+        <template #title>Payment</template>
+        <template #content>
+          Process digital and cash payments.
+        </template>
+        <template #footer>
+          <Button icon="pi pi-credit-card" label="Open" @click="go('/payment')" />
+        </template>
+      </Card>
+
+      <!-- WALLET TOP-UP -->
+      <Card class="bento-card small gradient-teal">
+        <template #title>Wallet Top-Up</template>
+        <template #content>
+          Add balance to customer wallets.
+        </template>
+        <template #footer>
+          <Button icon="pi pi-wallet" label="Top-Up" @click="go('/wallet/top-up')" />
+        </template>
+      </Card>
+
+      <!-- RECOMMENDATIONS -->
+      <Card class="bento-card small gradient-gold">
+        <template #title>Recommendations</template>
+        <template #content>
+          Smart restock and pricing suggestions.
+        </template>
+        <template #footer>
+          <Button icon="pi pi-star" label="Open" @click="go('/analytics/recommendations')" />
+        </template>
+      </Card>
+
+      <!-- STOCKOUT RISK (FULL WIDTH BOTTOM) -->
+      <Card class="bento-card stockout gradient-red">
         <template #title>Stockout Risk</template>
         <template #content>
-          Items at risk of running out.
+          Products likely to run out soon.
         </template>
         <template #footer>
           <Button
@@ -109,11 +134,8 @@ const go = (path) => router.push(path)
   min-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
-
-  /* INHERIT GLOBAL BACKGROUND */
   background: transparent;
 }
-
 
 /* HEADER */
 .title {
@@ -130,7 +152,7 @@ const go = (path) => router.push(path)
 .bento {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 160px;
+  grid-auto-rows: 170px;
   gap: 16px;
   flex: 1;
 }
@@ -167,30 +189,21 @@ const go = (path) => router.push(path)
   grid-column: span 1;
 }
 
+/* 🔴 STOCKOUT FULL WIDTH */
+.stockout {
+  grid-column: span 4;
+}
+
 /* GRADIENTS */
-.gradient-orange {
-  background: linear-gradient(135deg, #ff7a18, #ffb347);
-}
-
-.gradient-blue {
-  background: linear-gradient(135deg, #2563eb, #60a5fa);
-}
-
-.gradient-purple {
-  background: linear-gradient(135deg, #7c3aed, #a78bfa);
-}
-
-.gradient-green {
-  background: linear-gradient(135deg, #059669, #34d399);
-}
-
-.gradient-cyan {
-  background: linear-gradient(135deg, #0891b2, #67e8f9);
-}
-
-.gradient-red {
-  background: linear-gradient(135deg, #dc2626, #f87171);
-}
+.gradient-orange { background: linear-gradient(135deg, #ff7a18, #ffb347); }
+.gradient-blue   { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+.gradient-purple{ background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+.gradient-green { background: linear-gradient(135deg, #10b981, #34d399); }
+.gradient-cyan  { background: linear-gradient(135deg, #22c1dc, #67e8f9); }
+.gradient-red   { background: linear-gradient(135deg, #ef4444, #f87171); }
+.gradient-indigo{ background: linear-gradient(135deg, #4338ca, #818cf8); }
+.gradient-teal  { background: linear-gradient(135deg, #0f766e, #5eead4); }
+.gradient-gold  { background: linear-gradient(135deg, #ca8a04, #fde047); }
 
 /* PRIMEVUE TEXT */
 :deep(.p-card-title) {
@@ -219,7 +232,8 @@ const go = (path) => router.push(path)
   }
 
   .pos,
-  .wide {
+  .wide,
+  .stockout {
     grid-column: span 2;
   }
 }

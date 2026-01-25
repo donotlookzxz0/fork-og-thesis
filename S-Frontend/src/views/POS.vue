@@ -7,12 +7,17 @@ import InputText from "primevue/inputtext"
 import Button from "primevue/button"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
-import Message from "primevue/message"
+import Card from "primevue/card"
+import Divider from "primevue/divider"
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
+
+/* ---------------- TOAST ---------------- */
+const toast = useToast()
 
 /* ---------------- STATE ---------------- */
 const manualBarcode = ref("")
 const cart = ref([])
-const message = ref("")
 const userId = ref(null)
 
 const loadingUser = ref(true)
@@ -35,7 +40,13 @@ const fetchMe = async () => {
     userId.value = res.data.id
   } catch (err) {
     console.error("Auth error in POS:", err)
-    message.value = "Session expired. Please login again."
+
+    toast.add({
+      severity: "error",
+      summary: "Session Expired",
+      detail: "Please login again",
+      life: 3000,
+    })
   } finally {
     loadingUser.value = false
   }
@@ -62,7 +73,7 @@ const handleKeydown = async (e) => {
 }
 
 onMounted(() => {
-  fetchMe()   // 🔑 MUST LOAD USER FIRST
+  fetchMe()
   window.addEventListener("keydown", handleKeydown)
 })
 
@@ -89,9 +100,13 @@ const addByBarcode = async (barcode) => {
       })
     }
 
-    message.value = ""
   } catch {
-    message.value = "Item not found"
+    toast.add({
+      severity: "warn",
+      summary: "Not Found",
+      detail: "Item not found",
+      life: 2000,
+    })
   }
 }
 
@@ -117,23 +132,39 @@ const total = computed(() =>
 
 /* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
-  // 🔒 SAFETY CHECKS (VERY IMPORTANT)
   if (checkingOut.value) return
+
   if (loadingUser.value) {
-    message.value = "Loading user..."
+    toast.add({
+      severity: "info",
+      summary: "Loading",
+      detail: "Loading user...",
+      life: 2000,
+    })
     return
   }
+
   if (!userId.value) {
-    message.value = "Not authenticated. Please login again."
+    toast.add({
+      severity: "error",
+      summary: "Auth Error",
+      detail: "Not authenticated. Please login again.",
+      life: 3000,
+    })
     return
   }
+
   if (!cart.value.length) {
-    message.value = "Cart is empty"
+    toast.add({
+      severity: "warn",
+      summary: "Empty Cart",
+      detail: "Cart is empty",
+      life: 2000,
+    })
     return
   }
 
   checkingOut.value = true
-  message.value = ""
 
   try {
     const payload = {
@@ -146,12 +177,26 @@ const checkout = async () => {
 
     await createTransaction(payload)
 
+    // ✅ CLEAR CART
     cart.value = []
-    message.value = "Transaction completed successfully"
+
+    // ✅ SUCCESS POPUP (CENTER STYLE)
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Transaction completed successfully",
+      life: 2500,
+    })
 
   } catch (err) {
     console.error("Checkout error:", err)
-    message.value = err.response?.data?.error || "Checkout failed"
+
+    toast.add({
+      severity: "error",
+      summary: "Checkout Failed",
+      detail: err.response?.data?.error || "Checkout failed",
+      life: 3000,
+    })
   } finally {
     checkingOut.value = false
   }
@@ -159,107 +204,172 @@ const checkout = async () => {
 </script>
 
 <template>
-  <div class="pos">
-    <h1>POS System</h1>
+  <div class="pos-wrapper">
 
-    <div class="scan-row">
-      <InputText
-        v-model="manualBarcode"
-        placeholder="Type barcode (optional)"
-        @keyup.enter="addManual"
-      />
-      <Button
-        label="Add"
-        icon="pi pi-plus"
-        @click="addManual"
-      />
-    </div>
+    <!-- 🔔 TOAST POPUPS (CENTER STYLE SAME AS PAYMENT PAGE) -->
+    <Toast position="top-center" />
 
-    <small class="hint">
-      Scanner ready. You can scan anytime without focusing an input.
-    </small>
+    <div class="pos">
+      <h1 class="title">POS Mode</h1>
 
-    <DataTable
-      :value="cart"
-      v-if="cart.length"
-      responsiveLayout="scroll"
-    >
-      <Column field="name" header="Item" />
+      <!-- SCAN BAR -->
+      <div class="scan-row">
+        <InputText
+          v-model="manualBarcode"
+          placeholder="Type barcode (optional)"
+          @keyup.enter="addManual"
+        />
+        <Button label="Add" icon="pi pi-plus" @click="addManual" />
+      </div>
 
-      <Column header="Qty">
-        <template #body="{ data }">
-          <Button icon="pi pi-minus" text @click="decreaseQty(data)" />
-          <span class="qty">{{ data.quantity }}</span>
-          <Button icon="pi pi-plus" text @click="increaseQty(data)" />
-        </template>
-      </Column>
+      <small class="hint">
+        Scanner ready. You can scan anytime without focusing an input.
+      </small>
 
-      <Column header="Price">
-        <template #body="{ data }">
-          ₱{{ data.price }}
-        </template>
-      </Column>
+      <!-- CART CONTAINER -->
+      <Card class="cart-card">
+        <template #title>Current Cart</template>
 
-      <Column header="Total">
-        <template #body="{ data }">
-          ₱{{ (data.price * data.quantity).toFixed(2) }}
-        </template>
-      </Column>
+        <template #content>
+          <DataTable
+            :value="cart"
+            v-if="cart.length"
+            responsiveLayout="scroll"
+          >
+            <Column field="name" header="Item" />
 
-      <Column header="">
-        <template #body="{ data }">
+            <Column header="Qty">
+              <template #body="{ data }">
+                <Button icon="pi pi-minus" text @click="decreaseQty(data)" />
+                <span class="qty">{{ data.quantity }}</span>
+                <Button icon="pi pi-plus" text @click="increaseQty(data)" />
+              </template>
+            </Column>
+
+            <Column header="Price">
+              <template #body="{ data }">
+                ₱{{ data.price }}
+              </template>
+            </Column>
+
+            <Column header="Total">
+              <template #body="{ data }">
+                ₱{{ (data.price * data.quantity).toFixed(2) }}
+              </template>
+            </Column>
+
+            <Column header="">
+              <template #body="{ data }">
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  text
+                  @click="removeItem(data)"
+                />
+              </template>
+            </Column>
+          </DataTable>
+
+          <div v-else class="empty">
+            Scan an item to start a transaction
+          </div>
+
+          <Divider />
+
+          <div class="total-row">
+            <h2>Total</h2>
+            <h2 class="amount">₱{{ total.toFixed(2) }}</h2>
+          </div>
+
           <Button
-            icon="pi pi-trash"
-            severity="danger"
-            text
-            @click="removeItem(data)"
+            label="PAY"
+            icon="pi pi-credit-card"
+            class="pay"
+            :disabled="!cart.length || loadingUser || checkingOut"
+            :loading="checkingOut"
+            @click="checkout"
           />
         </template>
-      </Column>
-    </DataTable>
-
-    <h2>Total: ₱{{ total.toFixed(2) }}</h2>
-
-    <Button
-      label="PAY"
-      icon="pi pi-credit-card"
-      class="pay"
-      :disabled="!cart.length || loadingUser || checkingOut"
-      :loading="checkingOut"
-      @click="checkout"
-    />
-
-    <Message v-if="message" severity="info" class="mt-3">
-      {{ message }}
-    </Message>
+      </Card>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* FULL PAGE CENTERING */
+.pos-wrapper {
+  min-height: calc(100vh - 40px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+}
+
+/* MAIN PANEL */
 .pos {
+  width: 100%;
+  max-width: 720px;
   padding: 20px;
 }
 
+/* HEADER */
+.title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin-bottom: 16px;
+}
+
+/* SCAN BAR */
 .scan-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .hint {
-  color: #666;
+  color: #9ca3af;
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
+/* CART CONTAINER */
+.cart-card {
+  background: #1f1f1f;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* EMPTY STATE */
+.empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 40px 0;
+  font-size: 1rem;
+}
+
+/* QTY */
 .qty {
   margin: 0 8px;
   font-weight: bold;
 }
 
+/* TOTAL + PAY */
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.amount {
+  color: #34d399;
+  font-weight: bold;
+}
+
 .pay {
-  margin-top: 16px;
-  height: 50px;
-  font-size: 1.1rem;
+  width: 100%;
+  height: 54px;
+  font-size: 1.2rem;
 }
 </style>

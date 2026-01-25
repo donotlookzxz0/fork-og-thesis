@@ -2,13 +2,16 @@
 import { ref, onMounted, computed } from "vue"
 import api from "../services/api"
 
+// 🔔 PrimeVue Toast
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
+
+const toast = useToast()
 
 const getItems = () => api.get("/items/")
 const createItem = (data) => api.post("/items/", data)
 const updateItem = (id, data) => api.put(`/items/${id}`, data)
 const deleteItem = (id) => api.delete(`/items/${id}`)
-
-
 
 const categories = [
   "Fruits","Vegetables","Meat","Seafood","Dairy","Beverages","Snacks","Bakery",
@@ -40,18 +43,46 @@ const filteredItems = computed(() => {
 
 const fetchItems = async () => {
   const res = await getItems()
-  console.log("ITEMS:", res.data) // keep for debugging
   items.value = res.data
 }
 
 const submitForm = async () => {
-  if (editMode.value) {
-    await updateItem(currentId.value, form.value)
-  } else {
-    await createItem(form.value)
+  try {
+    if (editMode.value) {
+      await updateItem(currentId.value, form.value)
+
+      // ✅ UPDATE SUCCESS
+      toast.add({
+        severity: "success",
+        summary: "Item Updated",
+        detail: `${form.value.name} updated successfully`,
+        life: 3000,
+      })
+
+    } else {
+      await createItem(form.value)
+
+      // ✅ CREATE SUCCESS
+      toast.add({
+        severity: "success",
+        summary: "Item Added",
+        detail: `${form.value.name} added successfully`,
+        life: 3000,
+      })
+    }
+
+    resetForm()
+    fetchItems()
+
+  } catch (err) {
+    console.error("Save error:", err)
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: err.response?.data?.error || "Failed to save item",
+      life: 3000,
+    })
   }
-  resetForm()
-  fetchItems()
 }
 
 const editItem = (item) => {
@@ -62,8 +93,28 @@ const editItem = (item) => {
 
 const removeItem = async (id) => {
   if (!confirm("Delete this item?")) return
-  await deleteItem(id)
-  fetchItems()
+
+  try {
+    await deleteItem(id)
+    fetchItems()
+
+    // ✅ DELETE SUCCESS
+    toast.add({
+      severity: "success",
+      summary: "Item Deleted",
+      detail: "Item removed successfully",
+      life: 3000,
+    })
+
+  } catch (err) {
+    console.error("Delete error:", err)
+    toast.add({
+      severity: "error",
+      summary: "Delete Failed",
+      detail: err.response?.data?.error || "Failed to delete item",
+      life: 3000,
+    })
+  }
 }
 
 const resetForm = () => {
@@ -77,7 +128,11 @@ onMounted(fetchItems)
 
 <template>
   <div class="inventory">
-    <h1><i class="pi pi-box"></i> Inventory</h1>
+
+    <!-- 🔔 TOAST POPUPS -->
+    <Toast position="top-center" />
+
+    <h1 class="title"><i class="pi pi-box"></i> Inventory</h1>
 
     <div class="search-wrapper">
       <i class="pi pi-search"></i>
@@ -103,9 +158,10 @@ onMounted(fetchItems)
         </select>
       </div>
 
+      <!-- 💱 PRICE INPUT (PHP) -->
       <div class="input-icon">
-        <i class="pi pi-dollar"></i>
-        <input v-model.number="form.price" type="number" placeholder="Price" />
+        <i class="pi pi-money-bill"></i>
+        <input v-model.number="form.price" type="number" placeholder="Price (₱)" />
       </div>
 
       <div class="input-icon">
@@ -135,13 +191,13 @@ onMounted(fetchItems)
         </tr>
       </thead>
 
-      <!-- ✅ FIX 2: prevent empty/phantom rows -->
       <tbody v-if="filteredItems.length">
         <tr v-for="item in filteredItems" :key="item.id">
           <td>{{ item.name }}</td>
           <td>{{ item.quantity }}</td>
           <td>{{ item.category }}</td>
-          <td>{{ item.price }}</td>
+          <!-- 💱 DISPLAY PHP PRICE -->
+          <td>₱{{ item.price }}</td>
           <td>{{ item.barcode }}</td>
           <td class="actions">
             <button class="icon-btn edit" @click="editItem(item)">
@@ -162,8 +218,14 @@ onMounted(fetchItems)
   padding: 20px;
 }
 
-h1 i {
-  margin-right: 8px;
+/* Match title size with other pages */
+.title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .search-wrapper {
@@ -212,10 +274,6 @@ h1 i {
   padding: 0 18px;
   font-size: 1rem;
   cursor: pointer;
-}
-
-.btn i {
-  margin-right: 6px;
 }
 
 .primary {
