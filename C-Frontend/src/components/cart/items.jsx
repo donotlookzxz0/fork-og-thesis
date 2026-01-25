@@ -16,7 +16,7 @@ const Items = ({ cart, setCart }) => {
     <div className="cart-container">
       {/* Back button */}
       <div className="cart-nav">
-        <button className="back-btn" onClick={() => navigate("/scanner")}>
+        <button className="back-btn" onClick={() => navigate("/buy")}>
           ← Back to Scanner
         </button>
       </div>
