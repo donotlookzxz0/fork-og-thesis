@@ -26,7 +26,7 @@ export default function Success() {
         </h3>
 
         <Link to="/buy" className="success-btn">
-          Back to Scanner
+          Back to Shopping
         </Link>
       </div>
     </div>
