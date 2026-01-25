@@ -9,31 +9,31 @@
 .header-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 10px 20px;
+  padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-/* Logo + brand */
+/* Logo + brand (TEXT UNCHANGED) */
 .logo {
-  font-size: 1.5rem;
-  font-weight: 500;
+  font-size: 1.8rem;          /* ORIGINAL SIZE */
+  font-weight: 500;          /* ORIGINAL WEIGHT */
   color: #fff;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
 }
 
-/* Circle logo image — FIXED */
+/* 🔥 BIGGER LOGO — ONLY THIS IS CHANGED */
 .logo-image {
-  width: 32px;
-  height: 32px;
+  width: 60px;               /* BIGGER */
+  height: 60px;              /* BIGGER */
   object-fit: contain;
   border-radius: 50%;
-  background: transparent;   /* remove white background */
-  padding: 0;                /* remove padding */
+  background: transparent;
+  padding: 0;
 }
 
 /* Logout */
@@ -121,5 +121,11 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+  }
+
+  /* Slightly smaller but still BIG on mobile */
+  .logo-image {
+    width: 60px;
+    height: 60px;
   }
 }

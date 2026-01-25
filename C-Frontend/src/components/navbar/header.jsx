@@ -35,7 +35,7 @@ const Header = () => {
             alt="GFriends Logo"
             className="logo-image"
           />
-          GFriend's Korean Mart
+          GFriend's 
         </h1>
 
         {/* Navigation */}
