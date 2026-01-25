@@ -13,7 +13,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const ok = await login(username, password);
-    if (ok) navigate("/scanner");
+    if (ok) navigate("/buy");
   };
 
   return (
