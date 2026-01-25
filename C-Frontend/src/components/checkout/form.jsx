@@ -43,7 +43,7 @@ export default function CheckoutForm({
         {/* Payment Method Radios */}
         <h5 className="mt-4">Payment Method</h5>
 
-        {["cash", "wallet", "gcash"].map(method => (
+        {["cash", "wallet"].map(method => (
           <div className="form-check form-check-inline" key={method}>
             <input
               className="form-check-input"
@@ -90,9 +90,7 @@ export default function CheckoutForm({
           onClick={onPlaceOrder}
           disabled={paymentLocked}
         >
-          {paymentMethod === "gcash"
-            ? "Pay with GCash"
-            : paymentMethod === "wallet"
+          {paymentMethod === "wallet"
             ? waitingWalletApproval
               ? "Waiting for Wallet Approval"
               : "Pay with Wallet"

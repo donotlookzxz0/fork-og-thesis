@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import CheckoutForm from "../components/checkout/form";
 import { useCash } from "../hooks/checkout/useCash";
 import { useWallet } from "../hooks/checkout/useWallet";
-import { useGcash } from "../hooks/checkout/useGcash";
 
 export default function Checkout({ cart, setCart }) {
   const navigate = useNavigate();
@@ -19,8 +18,7 @@ export default function Checkout({ cart, setCart }) {
 
   const cash = useCash({ cart, setCart, navigate });
   const wallet = useWallet({ cart, setCart, navigate });
-  const gcash = useGcash({ cart, totalPrice });
-
+ 
   const paymentLocked =
     cash.pendingId ||
     wallet.walletPendingId ||
@@ -32,7 +30,6 @@ export default function Checkout({ cart, setCart }) {
 
     if (paymentMethod === "cash") return cash.startCashPayment();
     if (paymentMethod === "wallet") return wallet.startWalletPayment();
-    if (paymentMethod === "gcash") return gcash.payWithGcash();
   };
 
   return (
