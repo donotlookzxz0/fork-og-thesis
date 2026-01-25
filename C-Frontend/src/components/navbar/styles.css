@@ -6,7 +6,6 @@
   position: relative;
 }
 
-/* Layout container */
 .header-content {
   max-width: 1200px;
   margin: 0 auto;
@@ -16,15 +15,6 @@
   justify-content: space-between;
 }
 
-/* 🔽 Logo container (title + powered by) */
-.logo-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-/* Main title */
 .logo {
   font-size: 1.8rem;
   font-weight: 500;
@@ -35,20 +25,10 @@
   margin: 0;
 }
 
-/* Cart icon */
 .logo-icon {
   font-size: 1.6rem;
 }
 
-/* 🔽 Powered by text */
-.powered-by {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 2px;
-  letter-spacing: 0.4px;
-}
-
-/* Logout button */
 .logout-btn {
   background: transparent;
   border: none;
@@ -62,7 +42,6 @@
   color: #000000;
 }
 
-/* Hamburger menu */
 .hamburger-btn {
   background: transparent;
   border: none;
@@ -72,7 +51,6 @@
   display: none; 
 }
 
-/* Navigation links */
 .nav-links {
   display: flex;
   gap: 20px;
@@ -92,7 +70,6 @@
   text-decoration: underline;
 }
 
-/* 🔽 Mobile styles */
 @media (max-width: 480px) {
   .header-content {
     flex-direction: row;
@@ -128,18 +105,9 @@
     padding: 12px 0;
   }
 
-  /* Center logo + powered by nicely on mobile */
-  .logo-container {
+  .logo {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-  }
-
-  .logo {
-    font-size: 1.5rem;
-  }
-
-  .powered-by {
-    font-size: 10px;
   }
 }
