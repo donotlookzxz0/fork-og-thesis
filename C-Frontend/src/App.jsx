@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Header from "./components/navbar/header";
 import Home from "./screens/landing/page";
-import ScannerPage from "./screens/add-to-cart";
+import ScannerPage from "./screens/scanner-page";
 import ViewCart from "./screens/view-cart";
 import Checkout from "./screens/checkout";
 import Recommendations from "./screens/recommendations";
