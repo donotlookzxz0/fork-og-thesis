@@ -29,7 +29,7 @@ const Header = () => {
 
         <h1 className="logo">
           <FaShoppingCart className="logo-icon" />
-          PiMart
+          GFriend's Korean Mart 
         </h1>
 
     
