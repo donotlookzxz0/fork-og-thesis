@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 
-export function useWallet({ cart, setCart, navigate }) {
+export function useWallet({ cart, setCart, navigate, totalPrice }) {
   const [walletPendingId, setWalletPendingId] = useState(null);
   const [waitingWalletApproval, setWaitingWalletApproval] = useState(false);
 
@@ -17,7 +17,9 @@ export function useWallet({ cart, setCart, navigate }) {
           clearInterval(interval);
           setCart([]);
           localStorage.removeItem("cart");
-          navigate("/success");
+          navigate("/success", {
+            state: { totalPrice }
+          });
         }
 
         if (data.status === "CANCELLED") {

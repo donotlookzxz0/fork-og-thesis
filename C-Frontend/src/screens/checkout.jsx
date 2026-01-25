@@ -17,7 +17,7 @@ export default function Checkout({ cart, setCart }) {
   );
 
   const cash = useCash({ cart, setCart, navigate, totalPrice });
-  const wallet = useWallet({ cart, setCart, navigate });
+  const wallet = useWallet({ cart, setCart, navigate, totalPrice });
  
   const paymentLocked =
     cash.pendingId ||
