@@ -9,7 +9,7 @@
 .header-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 12px 20px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,26 +17,26 @@
 
 /* Logo + brand */
 .logo {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 500;
   color: #fff;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
 }
 
-/* Circle logo image (replaces cart icon) */
+/* Circle logo image — FIXED */
 .logo-image {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   border-radius: 50%;
-  background: #ffffff;
-  padding: 4px;
+  background: transparent;   /* remove white background */
+  padding: 0;                /* remove padding */
 }
 
-/* Logout button */
+/* Logout */
 .logout-btn {
   background: transparent;
   border: none;
@@ -80,7 +80,7 @@
   text-decoration: underline;
 }
 
-/* Mobile layout */
+/* Mobile */
 @media (max-width: 480px) {
   .header-content {
     flex-direction: row;

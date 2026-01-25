@@ -16,15 +16,32 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
-/* Rectangle logo styling */
+/* Rectangle logo */
 .landing-logo {
   width: 100%;
   max-width: 360px;
-  margin: 0 auto 40px auto;
+  margin: 0 auto 24px auto;
   display: block;
   object-fit: contain;
 }
 
+/* Title */
+.landing-title {
+  color: #000000;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* Description */
+.landing-description {
+  color: #757575;
+  font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* Button */
 .landing-btn {
   padding: 14px 28px;
   font-size: 1rem;
