@@ -16,7 +16,7 @@ export default function Checkout({ cart, setCart }) {
     0
   );
 
-  const cash = useCash({ cart, setCart, navigate });
+  const cash = useCash({ cart, setCart, navigate, totalPrice });
   const wallet = useWallet({ cart, setCart, navigate });
  
   const paymentLocked =

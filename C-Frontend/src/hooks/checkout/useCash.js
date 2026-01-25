@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 
-export function useCash({ cart, setCart, navigate }) {
+export function useCash({ cart, setCart, navigate, totalPrice }) {
   const [cashCode, setCashCode] = useState("");
   const [pendingId, setPendingId] = useState(null);
   const [waitingForAdmin, setWaitingForAdmin] = useState(false);
@@ -51,7 +51,9 @@ export function useCash({ cart, setCart, navigate }) {
     alert(res.data.message);
     setCart([]);
     localStorage.removeItem("cart");
-    navigate("/success");
+    navigate("/success", {
+      state: { totalPrice }
+    });
   };
 
   const cancelCash = async () => {
