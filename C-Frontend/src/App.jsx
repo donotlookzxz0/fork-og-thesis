@@ -51,7 +51,7 @@ function App() {
         />
 
         <Route
-          path="/scanner"
+          path="/buy"
           element={
             <ProtectedRoute>
               <Header />

@@ -12,7 +12,7 @@ const Header = () => {
 
   const navLinks = [
     { label: "Cart", path: "/cart" },
-    { label: "Buy", path: "/scanner" },
+    { label: "Buy", path: "/buy" },
     { label: "Best Sellers", path: "/best" },
     { label: "Wallet", path: "/wallet" }, 
   ];
