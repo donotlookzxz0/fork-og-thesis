@@ -1,11 +1,15 @@
 from db import db
+from sqlalchemy import CheckConstraint
+
 
 class Item(db.Model):
     __tablename__ = 'items'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    quantity = db.Column(db.Integer, default=0)
+
+    # 🔒 Stock must never go negative (DB-level protection)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
 
     category = db.Column(db.Enum(
         'Fruits',
@@ -41,6 +45,11 @@ class Item(db.Model):
         back_populates="item",
         lazy=True,
         cascade="all, delete-orphan"
+    )
+
+    # 🔒 FINAL SAFETY NET: Database constraint
+    __table_args__ = (
+        CheckConstraint('quantity >= 0', name='check_item_quantity_non_negative'),
     )
 
     def __repr__(self):

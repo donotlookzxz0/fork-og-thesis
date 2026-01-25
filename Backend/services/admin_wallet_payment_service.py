@@ -6,84 +6,121 @@ from models.sales_transaction import SalesTransaction
 from models.sales_transaction_item import SalesTransactionItem
 from models.item import Item
 
+
 class AdminWalletPaymentService:
 
     @staticmethod
     def approve(pending_id):
 
-        # Lock pending request
-        pending = (
-            PendingWalletPayment.query
-            .filter_by(id=pending_id, status="PENDING")
-            .with_for_update()
-            .first()
-        )
+        try:
+            # -----------------------------
+            # 🔒 Lock pending request
+            # -----------------------------
+            pending = (
+                PendingWalletPayment.query
+                .filter_by(id=pending_id, status="PENDING")
+                .with_for_update()
+                .first()
+            )
 
-        if not pending:
-            raise Exception("Pending wallet payment not found")
+            if not pending:
+                raise Exception("Pending wallet payment not found")
 
-        # Lock wallet
-        wallet = (
-            EWallet.query
-            .filter_by(user_id=pending.user_id)
-            .with_for_update()
-            .first()
-        )
+            # -----------------------------
+            # 🔒 Lock wallet
+            # -----------------------------
+            wallet = (
+                EWallet.query
+                .filter_by(user_id=pending.user_id)
+                .with_for_update()
+                .first()
+            )
 
-        if not wallet:
-            raise Exception("Wallet not found")
+            if not wallet:
+                raise Exception("Wallet not found")
 
-        total = 0
-        items_cache = []
+            # -----------------------------
+            # 🔒 Lock + validate all items
+            # -----------------------------
+            validated_items = []
+            total = 0
 
-        # Validate cart
-        for entry in pending.cart:
-            barcode = entry.get("barcode")
-            qty = entry.get("quantity")
+            for entry in pending.cart:
+                barcode = entry.get("barcode")
+                qty = entry.get("quantity")
 
-            if not barcode or not qty:
-                continue
+                if not barcode or not qty or qty <= 0:
+                    raise Exception("Invalid cart item data")
 
-            item = Item.query.filter_by(barcode=barcode).first()
-            if not item:
-                raise Exception(f"Item not found: {barcode}")
+                # Lock item row
+                item = (
+                    Item.query
+                    .filter_by(barcode=barcode)
+                    .with_for_update()
+                    .first()
+                )
 
-            if item.quantity < qty:
-                raise Exception(f"Not enough stock for {item.name}")
+                if not item:
+                    raise Exception(f"Item not found: {barcode}")
 
-            total += item.price * qty
-            items_cache.append((item, qty))
+                if item.quantity <= 0:
+                    raise Exception(f"Item out of stock: {item.name}")
 
-        if wallet.balance < total:
-            raise Exception("Insufficient wallet balance")
+                if qty > item.quantity:
+                    raise Exception(f"Insufficient stock for {item.name}")
 
-        # Deduct wallet
-        wallet.balance -= total
+                total += item.price * qty
+                validated_items.append((item, qty))
 
-        # Create sales transaction
-        transaction = SalesTransaction(user_id=pending.user_id)
-        db.session.add(transaction)
-        db.session.flush()
+            # -----------------------------
+            # Check wallet balance again
+            # -----------------------------
+            if wallet.balance < total:
+                raise Exception("Insufficient wallet balance")
 
-        # Deduct stock
-        for item, qty in items_cache:
-            item.quantity -= qty
-            db.session.add(SalesTransactionItem(
-                transaction_id=transaction.id,
-                item_id=item.id,
-                quantity=qty,
-                price_at_sale=item.price
+            # -----------------------------
+            # Deduct wallet
+            # -----------------------------
+            wallet.balance -= total
+
+            # -----------------------------
+            # Create sales transaction
+            # -----------------------------
+            transaction = SalesTransaction(user_id=pending.user_id)
+            db.session.add(transaction)
+            db.session.flush()
+
+            # -----------------------------
+            # Deduct stock + record items
+            # -----------------------------
+            for item, qty in validated_items:
+                item.quantity -= qty
+
+                db.session.add(SalesTransactionItem(
+                    transaction_id=transaction.id,
+                    item_id=item.id,
+                    quantity=qty,
+                    price_at_sale=item.price
+                ))
+
+            # -----------------------------
+            # Wallet ledger
+            # -----------------------------
+            db.session.add(EWalletTransaction(
+                wallet_id=wallet.id,
+                amount=-total,
+                type="payment",
+                reference_id=transaction.id
             ))
 
-        # Wallet ledger
-        db.session.add(EWalletTransaction(
-            wallet_id=wallet.id,
-            amount=-total,
-            type="payment",
-            reference_id=transaction.id
-        ))
+            # -----------------------------
+            # Mark pending as PAID only at the end
+            # -----------------------------
+            pending.status = "PAID"
 
-        pending.status = "PAID"
+            db.session.commit()
+            return transaction.id
 
-        db.session.commit()
-        return transaction.id
+        except Exception:
+            db.session.rollback()
+            raise

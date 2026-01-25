@@ -2,29 +2,39 @@ from db import db
 from models.pending_cash_payment import PendingCashPayment
 import random
 
+
 class AdminCashPaymentService:
 
     @staticmethod
     def generate_code(pending_id):
-        pending = PendingCashPayment.query.filter_by(
-            id=pending_id,
-            status="PENDING"
-        ).first()
 
-        if not pending:
-            raise Exception("Pending cash request not found")
+        try:
+            # 🔒 Lock pending row
+            pending = (
+                PendingCashPayment.query
+                .filter_by(id=pending_id, status="PENDING")
+                .with_for_update()
+                .first()
+            )
 
-        if pending.code:
-            raise Exception("Cash code already generated for this request")
+            if not pending:
+                raise Exception("Pending cash request not found")
 
-        # Generate unique 6-digit code
-        while True:
-            code = f"{random.randint(100000, 999999)}"
-            exists = PendingCashPayment.query.filter_by(code=code).first()
-            if not exists:
-                break
+            if pending.code:
+                raise Exception("Cash code already generated for this request")
 
-        pending.code = code
-        db.session.commit()
+            # Generate unique 6-digit code
+            while True:
+                code = f"{random.randint(100000, 999999)}"
+                exists = PendingCashPayment.query.filter_by(code=code).first()
+                if not exists:
+                    break
 
-        return pending
+            pending.code = code
+            db.session.commit()
+
+            return pending
+
+        except Exception:
+            db.session.rollback()
+            raise
