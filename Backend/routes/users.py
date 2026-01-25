@@ -9,18 +9,20 @@ from utils.auth_restrict import require_auth
 user_routes = Blueprint("user_routes", __name__)
 
 JWT_SECRET = "super-secret"
-ACCESS_EXPIRES = timedelta(minutes=15)
+ACCESS_EXPIRES = timedelta(hours=13)
 REFRESH_EXPIRES = timedelta(days=7)
 
-# 🔑 PRODUCTION COOKIE CONFIG (CROSS-ORIGIN SAFE)
-# ⚠️ DO NOT SET domain - allows cross-origin cookies (api.pimart.software -> vercel.app)
-# ⚠️ Partitioned attribute required for Chrome 127+ third-party cookie support
+# 🔑 PRODUCTION COOKIE CONFIG (SUBDOMAIN SAFE)
+# Works for:
+# - app.pimart.software
+# - admin.pimart.software
+# - api.pimart.software
 COOKIE_KWARGS = dict(
     httponly=True,
-    samesite="None",
+    samesite="Lax",                 # 🔥 correct for same-site subdomains
     secure=True,
     path="/",
-    # domain is intentionally NOT set - allows cross-origin cookies
+    domain=".pimart.software"       # 🔥 SHARE ACROSS ALL SUBDOMAINS
 )
 
 
@@ -32,39 +34,6 @@ def create_token(user_id, token_type="access"):
         + (ACCESS_EXPIRES if token_type == "access" else REFRESH_EXPIRES),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
-
-def set_cookie_with_partitioned(resp, name, value, **kwargs):
-    """
-    Set cookie with Partitioned attribute for Chrome 127+ compatibility.
-    Flask's set_cookie doesn't support Partitioned directly, so we add it manually.
-    The Partitioned attribute is required for Chrome's new third-party cookie behavior.
-    """
-    # Set the cookie normally first
-    resp.set_cookie(name, value, **kwargs)
-    
-    # Manually add Partitioned attribute to Set-Cookie header
-    # Get all Set-Cookie headers (there may be multiple cookies)
-    cookie_headers = resp.headers.getlist("Set-Cookie")
-    
-    # Find the cookie we just set and append ; Partitioned
-    updated = False
-    for i, cookie in enumerate(cookie_headers):
-        if cookie.startswith(f"{name}="):
-            # Only add if not already present
-            if "; Partitioned" not in cookie and " Partitioned" not in cookie:
-                cookie_headers[i] = cookie + "; Partitioned"
-                updated = True
-            break
-    
-    # If we updated a cookie, replace all Set-Cookie headers
-    if updated:
-        # Remove all existing Set-Cookie headers
-        while "Set-Cookie" in resp.headers:
-            resp.headers.pop("Set-Cookie")
-        # Re-add all cookies (with the updated one)
-        for header in cookie_headers:
-            resp.headers.add("Set-Cookie", header)
 
 
 # ---------------- AUTH CHECK ----------------
@@ -173,9 +142,9 @@ def login():
         "role": user.role
     }))
 
-    # Use helper function to set cookies with Partitioned attribute
-    set_cookie_with_partitioned(resp, "access_token", access_token, **COOKIE_KWARGS)
-    set_cookie_with_partitioned(resp, "refresh_token", refresh_token, **COOKIE_KWARGS)
+    # 🔥 NORMAL SUBDOMAIN COOKIES (NO PARTITIONED, NO CROSS-ORIGIN HACKS)
+    resp.set_cookie("access_token", access_token, **COOKIE_KWARGS)
+    resp.set_cookie("refresh_token", refresh_token, **COOKIE_KWARGS)
 
     return resp, 200
 
@@ -225,14 +194,15 @@ def refresh():
         new_access = create_token(user.id, "access")
 
         resp = make_response(jsonify({"message": "token refreshed"}))
-        set_cookie_with_partitioned(resp, "access_token", new_access, **COOKIE_KWARGS)
+        resp.set_cookie("access_token", new_access, **COOKIE_KWARGS)
+
         return resp, 200
 
     except jwt.InvalidTokenError:
         return jsonify({"error": "invalid refresh token"}), 401
 
 
-# ---------------- LOGOUT (FIXED) ----------------
+# ---------------- LOGOUT ----------------
 
 @user_routes.route("/logout", methods=["POST"])
 def logout():
@@ -250,9 +220,9 @@ def logout():
 
     resp = make_response(jsonify({"message": "logged out"}))
 
-    # 🔑 DELETE COOKIES PROPERLY (path only, no domain for cross-origin)
-    resp.delete_cookie("access_token", path="/")
-    resp.delete_cookie("refresh_token", path="/")
+    # 🔥 MUST MATCH DOMAIN TO DELETE PROPERLY
+    resp.delete_cookie("access_token", path="/", domain=".pimart.software")
+    resp.delete_cookie("refresh_token", path="/", domain=".pimart.software")
 
     return resp, 200
 
@@ -280,3 +250,4 @@ def delete_user(id):
         return jsonify({"message": "User deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
+        return jsonify({"error": "Delete failed"}), 500

@@ -5,6 +5,8 @@ from models.sales_transaction import SalesTransaction
 from models.sales_transaction_item import SalesTransactionItem
 from models.item import Item
 
+from sqlalchemy.orm import joinedload
+
 # from utils.auth_restrict import require_auth
 
 sales_bp = Blueprint("sales", __name__)
@@ -16,30 +18,46 @@ sales_bp = Blueprint("sales", __name__)
 @sales_bp.route("/", methods=["GET"])
 # @require_auth(roles=("admin",))
 def get_all_transactions():
-    transactions = (
-        SalesTransaction.query
-        .order_by(SalesTransaction.date.desc())
-        .all()
-    )
+    try:
+        # 🔥 FORCE EAGER LOADING (NO LAZY LOAD CRASH)
+        transactions = (
+            SalesTransaction.query
+            .options(
+                joinedload(SalesTransaction.user),
+                joinedload(SalesTransaction.items).joinedload(SalesTransactionItem.item)
+            )
+            .order_by(SalesTransaction.date.desc())
+            .all()
+        )
 
-    return jsonify([
-        {
-            "transaction_id": t.id,
-            "date": t.date.isoformat(),
-            "user_id": t.user.id if t.user else None,
-            "items": [
-                {
+        result = []
+
+        for t in transactions:
+            # SAFE USER ACCESS
+            user_id = t.user.id if t.user else None
+
+            items = []
+            for ti in t.items:
+                items.append({
                     "item_id": ti.item_id,
-                    "item_name": ti.item.name,
-                    "category": ti.item.category,
+                    "item_name": ti.item.name if ti.item else None,
+                    "category": ti.item.category if ti.item else None,
                     "quantity": ti.quantity,
                     "price_at_sale": float(ti.price_at_sale)
-                }
-                for ti in t.items
-            ]
-        }
-        for t in transactions
-    ]), 200
+                })
+
+            result.append({
+                "transaction_id": t.id,
+                "date": t.date.isoformat(),
+                "user_id": user_id,
+                "items": items
+            })
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("🔥 SALES ERROR:", e)
+        return jsonify({"error": "Failed to load transactions"}), 500
 
 
 # --------------------------------------------------
@@ -49,25 +67,38 @@ def get_all_transactions():
 @sales_bp.route("/<int:id>/", methods=["GET"])
 # @require_auth(roles=("admin",))
 def get_transaction(id):
-    t = SalesTransaction.query.get(id)
-    if not t:
-        return jsonify({"error": "Transaction not found"}), 404
+    try:
+        t = (
+            SalesTransaction.query
+            .options(
+                joinedload(SalesTransaction.user),
+                joinedload(SalesTransaction.items).joinedload(SalesTransactionItem.item)
+            )
+            .get(id)
+        )
 
-    return jsonify({
-        "transaction_id": t.id,
-        "date": t.date.isoformat(),
-        "user_id": t.user.id if t.user else None,
-        "items": [
-            {
-                "item_id": ti.item_id,
-                "item_name": ti.item.name,
-                "category": ti.item.category,
-                "quantity": ti.quantity,
-                "price_at_sale": float(ti.price_at_sale)
-            }
-            for ti in t.items
-        ]
-    }), 200
+        if not t:
+            return jsonify({"error": "Transaction not found"}), 404
+
+        return jsonify({
+            "transaction_id": t.id,
+            "date": t.date.isoformat(),
+            "user_id": t.user.id if t.user else None,
+            "items": [
+                {
+                    "item_id": ti.item_id,
+                    "item_name": ti.item.name if ti.item else None,
+                    "category": ti.item.category if ti.item else None,
+                    "quantity": ti.quantity,
+                    "price_at_sale": float(ti.price_at_sale)
+                }
+                for ti in t.items
+            ]
+        }), 200
+
+    except Exception as e:
+        print("🔥 SALES SINGLE ERROR:", e)
+        return jsonify({"error": "Failed to load transaction"}), 500
 
 
 # --------------------------------------------------
@@ -141,7 +172,8 @@ def update_transaction(id):
 
     # restore stock
     for ti in t.items:
-        ti.item.quantity += ti.quantity
+        if ti.item:
+            ti.item.quantity += ti.quantity
 
     SalesTransactionItem.query.filter_by(transaction_id=t.id).delete()
 
@@ -178,7 +210,8 @@ def delete_transaction(id):
         return jsonify({"error": "Transaction not found"}), 404
 
     for ti in t.items:
-        ti.item.quantity += ti.quantity
+        if ti.item:
+            ti.item.quantity += ti.quantity
 
     db.session.delete(t)
     db.session.commit()
