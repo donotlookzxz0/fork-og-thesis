@@ -19,10 +19,10 @@ REFRESH_EXPIRES = timedelta(days=7)
 # - api.pimart.software
 COOKIE_KWARGS = dict(
     httponly=True,
-    samesite="Lax",                 # 🔥 correct for same-site subdomains
+    samesite="None",                 # 🔥 correct for same-site subdomains
     secure=True,
     path="/",
-    domain=".pimart.software"       # 🔥 SHARE ACROSS ALL SUBDOMAINS
+    # domain=".pimart.software"       # 🔥 SHARE ACROSS ALL SUBDOMAINS
 )
 
 

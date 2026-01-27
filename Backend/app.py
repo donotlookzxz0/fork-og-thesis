@@ -27,13 +27,18 @@ CORS(
     app,
     supports_credentials=True,
     origins=[
-        "https://app.pimart.software",  # Custom domain (same-site cookies - RECOMMENDED)
-        "https://admin.pimart.software",        # NEW admin / server frontend
-        "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
-        "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
-        "http://localhost:5173"
+        # "https://app.pimart.software",  # Custom domain (same-site cookies - RECOMMENDED)
+        # "https://admin.pimart.software",        # NEW admin / server frontend
+        # "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
+        # "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
+        # "http://localhost:5173"
+        "http://localhost:5173",  # Vue dev server
+        "https://fork-og-thesis-dczn.vercel.app",
+        "https://chippable-lawrence-seventhly.ngrok-free.dev",
     ],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Set-Cookie"],
 )
 
 # ⚠️ DO NOT ADD ANY before_request OPTIONS HANDLER
