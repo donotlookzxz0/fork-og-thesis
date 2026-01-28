@@ -4,6 +4,7 @@ from db import db
 from models.sales_transaction import SalesTransaction
 from models.sales_transaction_item import SalesTransactionItem
 from models.item import Item
+from datetime import datetime
 
 from sqlalchemy.orm import joinedload
 
@@ -193,6 +194,18 @@ def update_transaction(id):
             quantity=qty,
             price_at_sale=item.price
         ))
+
+    if "date" in data:
+        incoming = datetime.fromisoformat(data["date"])
+
+        # Reject timezone-aware input (safety)
+        if incoming.tzinfo is not None:
+            return jsonify({
+                "error": "Timezone offsets are not allowed. Send PH local time only."
+            }), 400
+
+        # Store as-is (PH local naive)
+        t.date = incoming
 
     db.session.commit()
     return jsonify({"message": "Transaction updated"}), 200
