@@ -1,9 +1,8 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue"
+import { ref, onMounted, onBeforeUnmount } from "vue"
 import api from "../services/api"
 import { useCartStore } from "../stores/cartStore"
 
-// PrimeVue components
 import InputText from "primevue/inputtext"
 import Button from "primevue/button"
 import DataTable from "primevue/datatable"
@@ -13,13 +12,10 @@ import Divider from "primevue/divider"
 import Toast from "primevue/toast"
 import { useToast } from "primevue/usetoast"
 
-/* ---------------- TOAST ---------------- */
 const toast = useToast()
 const cartStore = useCartStore()
 
-/* ---------------- STATE ---------------- */
 const manualBarcode = ref("")
-// ❌ removed local cart ref
 const userId = ref(null)
 
 const loadingUser = ref(true)
@@ -27,22 +23,19 @@ const checkingOut = ref(false)
 
 let scanBuffer = ""
 let scanTimeout = null
+let autoRefreshTimer = null
 
-/* ---------------- API ---------------- */
 const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
 
 const createTransaction = (payload) =>
   api.post("/sales", payload)
 
-/* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
   } catch (err) {
-    console.error("Auth error in POS:", err)
-
     toast.add({
       severity: "error",
       summary: "Session Expired",
@@ -54,7 +47,6 @@ const fetchMe = async () => {
   }
 }
 
-/* ---------------- SCANNER (AUTO) ---------------- */
 const handleKeydown = async (e) => {
   if (["Shift", "Alt", "Control"].includes(e.key)) return
 
@@ -77,13 +69,16 @@ const handleKeydown = async (e) => {
 onMounted(() => {
   fetchMe()
   window.addEventListener("keydown", handleKeydown)
+  autoRefreshTimer = setInterval(() => {
+    location.reload()
+  }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown)
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer)
 })
 
-/* ---------------- CART ---------------- */
 const addByBarcode = async (barcode) => {
   try {
     const res = await getItemByBarcode(barcode)
@@ -108,11 +103,8 @@ const increaseQty = cartStore.increaseQty
 const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
 
-/* ---------------- TOTAL ---------------- */
 const total = cartStore.total
 
-
-/* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
   if (checkingOut.value) return
 
@@ -137,8 +129,6 @@ const checkout = async () => {
   }
 
   if (!cartStore.cart.length) {
-
-
     toast.add({
       severity: "warn",
       summary: "Empty Cart",
@@ -154,16 +144,12 @@ const checkout = async () => {
     const payload = {
       user_id: userId.value,
       items: cartStore.cart.map(i => ({
-
-
         item_id: i.item_id,
         quantity: i.quantity
       }))
     }
 
     await createTransaction(payload)
-
-    // ✅ CLEAR CART VIA STORE
     cartStore.clearCart()
 
     toast.add({
@@ -174,8 +160,6 @@ const checkout = async () => {
     })
 
   } catch (err) {
-    console.error("Checkout error:", err)
-
     toast.add({
       severity: "error",
       summary: "Checkout Failed",
@@ -190,7 +174,6 @@ const checkout = async () => {
 
 <template>
   <div class="pos-wrapper">
-
     <Toast position="top-center" />
 
     <div class="pos">
@@ -216,8 +199,6 @@ const checkout = async () => {
           <DataTable
             :value="cartStore.cart"
             v-if="cartStore.cart.length"
-
-
             responsiveLayout="scroll"
           >
             <Column field="name" header="Item" />
@@ -270,8 +251,6 @@ const checkout = async () => {
             icon="pi pi-credit-card"
             class="pay"
             :disabled="!cartStore.cart.length || loadingUser || checkingOut"
-
-
             :loading="checkingOut"
             @click="checkout"
           />
