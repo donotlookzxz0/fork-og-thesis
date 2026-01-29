@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 import api from "../services/api"
+import { useCartStore } from "@/stores/cartStore"
 
 // PrimeVue components
 import InputText from "primevue/inputtext"
@@ -14,10 +15,11 @@ import { useToast } from "primevue/usetoast"
 
 /* ---------------- TOAST ---------------- */
 const toast = useToast()
+const cartStore = useCartStore()
 
 /* ---------------- STATE ---------------- */
 const manualBarcode = ref("")
-const cart = ref([])
+// ❌ removed local cart ref
 const userId = ref(null)
 
 const loadingUser = ref(true)
@@ -85,21 +87,7 @@ onBeforeUnmount(() => {
 const addByBarcode = async (barcode) => {
   try {
     const res = await getItemByBarcode(barcode)
-    const item = res.data
-
-    const existing = cart.value.find(c => c.item_id === item.id)
-
-    if (existing) {
-      existing.quantity++
-    } else {
-      cart.value.push({
-        item_id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: 1
-      })
-    }
-
+    cartStore.addItem(res.data)
   } catch {
     toast.add({
       severity: "warn",
@@ -116,19 +104,12 @@ const addManual = async () => {
   manualBarcode.value = ""
 }
 
-const increaseQty = (row) => row.quantity++
-const decreaseQty = (row) => {
-  if (row.quantity > 1) row.quantity--
-}
-
-const removeItem = (row) => {
-  cart.value = cart.value.filter(i => i.item_id !== row.item_id)
-}
+const increaseQty = cartStore.increaseQty
+const decreaseQty = cartStore.decreaseQty
+const removeItem = cartStore.removeItem
 
 /* ---------------- TOTAL ---------------- */
-const total = computed(() =>
-  cart.value.reduce((sum, i) => sum + i.price * i.quantity, 0)
-)
+const total = cartStore.total
 
 /* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
@@ -154,7 +135,7 @@ const checkout = async () => {
     return
   }
 
-  if (!cart.value.length) {
+  if (!cartStore.cart.length) {
     toast.add({
       severity: "warn",
       summary: "Empty Cart",
@@ -169,7 +150,7 @@ const checkout = async () => {
   try {
     const payload = {
       user_id: userId.value,
-      items: cart.value.map(i => ({
+      items: cartStore.cart.map(i => ({
         item_id: i.item_id,
         quantity: i.quantity
       }))
@@ -177,10 +158,9 @@ const checkout = async () => {
 
     await createTransaction(payload)
 
-    // ✅ CLEAR CART
-    cart.value = []
+    // ✅ CLEAR CART VIA STORE
+    cartStore.clearCart()
 
-    // ✅ SUCCESS POPUP (CENTER STYLE)
     toast.add({
       severity: "success",
       summary: "Success",
@@ -206,13 +186,11 @@ const checkout = async () => {
 <template>
   <div class="pos-wrapper">
 
-    <!-- 🔔 TOAST POPUPS (CENTER STYLE SAME AS PAYMENT PAGE) -->
     <Toast position="top-center" />
 
     <div class="pos">
       <h1 class="title">POS Mode</h1>
 
-      <!-- SCAN BAR -->
       <div class="scan-row">
         <InputText
           v-model="manualBarcode"
@@ -226,14 +204,13 @@ const checkout = async () => {
         Scanner ready. You can scan anytime without focusing an input.
       </small>
 
-      <!-- CART CONTAINER -->
       <Card class="cart-card">
         <template #title>Current Cart</template>
 
         <template #content>
           <DataTable
-            :value="cart"
-            v-if="cart.length"
+            :value="cartStore.cart"
+            v-if="cartStore.cart.length"
             responsiveLayout="scroll"
           >
             <Column field="name" header="Item" />
@@ -285,7 +262,7 @@ const checkout = async () => {
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cart.length || loadingUser || checkingOut"
+            :disabled="!cartStore.cart.length || loadingUser || checkingOut"
             :loading="checkingOut"
             @click="checkout"
           />
@@ -296,7 +273,6 @@ const checkout = async () => {
 </template>
 
 <style scoped>
-/* FULL PAGE CENTERING */
 .pos-wrapper {
   min-height: calc(100vh - 40px);
   display: flex;
@@ -305,21 +281,18 @@ const checkout = async () => {
   padding-top: 40px;
 }
 
-/* MAIN PANEL */
 .pos {
   width: 100%;
   max-width: 720px;
   padding: 20px;
 }
 
-/* HEADER */
 .title {
   color: #ffffff;
   font-size: 1.8rem;
   margin-bottom: 16px;
 }
 
-/* SCAN BAR */
 .scan-row {
   display: flex;
   gap: 10px;
@@ -332,7 +305,6 @@ const checkout = async () => {
   margin-bottom: 16px;
 }
 
-/* CART CONTAINER */
 .cart-card {
   background: #1f1f1f;
   border-radius: 18px;
@@ -340,7 +312,6 @@ const checkout = async () => {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* EMPTY STATE */
 .empty {
   text-align: center;
   color: #9ca3af;
@@ -348,13 +319,11 @@ const checkout = async () => {
   font-size: 1rem;
 }
 
-/* QTY */
 .qty {
   margin: 0 8px;
   font-weight: bold;
 }
 
-/* TOTAL + PAY */
 .total-row {
   display: flex;
   justify-content: space-between;
