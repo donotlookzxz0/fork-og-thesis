@@ -136,7 +136,8 @@ const checkout = async () => {
     return
   }
 
-  if (!cartStore.cart.value.length) {
+  if (!cartStore.cart.length) {
+
 
     toast.add({
       severity: "warn",
@@ -152,7 +153,8 @@ const checkout = async () => {
   try {
     const payload = {
       user_id: userId.value,
-      items: cartStore.cart.value.map(i => ({
+      items: cartStore.cart.map(i => ({
+
 
         item_id: i.item_id,
         quantity: i.quantity

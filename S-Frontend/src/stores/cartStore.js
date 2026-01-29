@@ -8,7 +8,10 @@ export const useCartStore = defineStore("cart", () => {
 
   /* ---------------- TOTAL ---------------- */
   const total = computed(() =>
-    cart.value.reduce((sum, i) => sum + i.price * i.quantity, 0)
+    cart.value.reduce(
+      (sum, i) => sum + Number(i.price) * Number(i.quantity),
+      0
+    )
   )
 
   /* ---------------- ADD ITEM ---------------- */
@@ -28,7 +31,7 @@ export const useCartStore = defineStore("cart", () => {
         {
           item_id: item.id,
           name: item.name,
-          price: item.price,
+          price: Number(item.price), // ✅ FIXED HERE
           quantity: 1
         }
       ]
