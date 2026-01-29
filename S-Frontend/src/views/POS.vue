@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 import api from "../services/api"
-import { useCartStore } from "@/stores/cartStore"
+import { useCartStore } from "../stores/cartStore"
 
 // PrimeVue components
 import InputText from "primevue/inputtext"
