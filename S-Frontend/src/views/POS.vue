@@ -109,7 +109,8 @@ const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
 
 /* ---------------- TOTAL ---------------- */
-const total = cartStore.total
+const total = computed(() => cartStore.total.value)
+
 
 /* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
