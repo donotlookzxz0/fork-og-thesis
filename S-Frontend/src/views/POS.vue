@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue"
-import { storeToRefs } from "pinia"
 import api from "../services/api"
 import { useCartStore } from "../stores/cartStore"
 
@@ -15,7 +14,6 @@ import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
 const cartStore = useCartStore()
-const { cart, total } = storeToRefs(cartStore)
 
 const manualBarcode = ref("")
 const nameQuery = ref("")
@@ -27,6 +25,7 @@ const checkingOut = ref(false)
 
 let scanBuffer = ""
 let scanTimeout = null
+let nameSearchTimeout = null
 
 const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
@@ -41,6 +40,13 @@ const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
+  } catch {
+    toast.add({
+      severity: "error",
+      summary: "Session Expired",
+      detail: "Please login again",
+      life: 3000,
+    })
   } finally {
     loadingUser.value = false
   }
@@ -88,47 +94,110 @@ const addByBarcode = async (barcode) => {
   }
 }
 
-const addManual = async () => {
+const addManualBarcode = async () => {
   if (!manualBarcode.value) return
   await addByBarcode(manualBarcode.value)
   manualBarcode.value = ""
 }
 
-const searchByName = async () => {
-  if (!nameQuery.value) {
-    nameResults.value = []
-    return
-  }
+const searchByName = () => {
+  clearTimeout(nameSearchTimeout)
+  nameSearchTimeout = setTimeout(async () => {
+    if (!nameQuery.value) {
+      nameResults.value = []
+      return
+    }
+    try {
+      const res = await searchItemsByName(nameQuery.value)
+      nameResults.value = res.data.slice(0, 6)
+    } catch {
+      nameResults.value = []
+    }
+  }, 250)
+}
 
-  try {
-    const res = await searchItemsByName(nameQuery.value)
-    nameResults.value = res.data.slice(0, 5)
-  } catch {
-    nameResults.value = []
+const addFirstNameMatch = () => {
+  if (nameResults.value.length) {
+    addFromName(nameResults.value[0])
   }
 }
 
-const addFromNameResult = (item) => {
+const addFromName = (item) => {
   cartStore.addItem(item)
   nameQuery.value = ""
   nameResults.value = []
 }
 
+const addManualName = async () => {
+  if (!nameQuery.value) return
+  try {
+    const res = await searchItemsByName(nameQuery.value)
+    if (res.data.length) {
+      cartStore.addItem(res.data[0])
+      nameQuery.value = ""
+      nameResults.value = []
+    } else {
+      toast.add({
+        severity: "warn",
+        summary: "Not Found",
+        detail: "No matching item",
+        life: 2000,
+      })
+    }
+  } catch {
+    toast.add({
+      severity: "error",
+      summary: "Search Failed",
+      detail: "Could not search items",
+      life: 2000,
+    })
+  }
+}
+
 const increaseQty = cartStore.increaseQty
 const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
+const total = cartStore.total
 
 const checkout = async () => {
   if (checkingOut.value) return
-  if (!userId.value) return
-  if (!cart.value.length) return
+
+  if (loadingUser.value) {
+    toast.add({
+      severity: "info",
+      summary: "Loading",
+      detail: "Loading user...",
+      life: 2000,
+    })
+    return
+  }
+
+  if (!userId.value) {
+    toast.add({
+      severity: "error",
+      summary: "Auth Error",
+      detail: "Not authenticated. Please login again.",
+      life: 3000,
+    })
+    return
+  }
+
+  if (!cartStore.cart.length) {
+    toast.add({
+      severity: "warn",
+      summary: "Empty Cart",
+      detail: "Cart is empty",
+      life: 2000,
+    })
+    return
+  }
 
   checkingOut.value = true
 
   try {
     const payload = {
       user_id: userId.value,
-      items: cart.value.map(i => ({
+      items: cartStore.cart.map(i => ({
         item_id: i.item_id,
         quantity: i.quantity
       }))
@@ -167,9 +236,9 @@ const checkout = async () => {
         <InputText
           v-model="manualBarcode"
           placeholder="Scan or type barcode"
-          @keyup.enter="addManual"
+          @keyup.enter="addManualBarcode"
         />
-        <Button label="Add" icon="pi pi-plus" @click="addManual" />
+        <Button label="Add" icon="pi pi-plus" @click="addManualBarcode" />
       </div>
 
       <div class="scan-row">
@@ -177,7 +246,9 @@ const checkout = async () => {
           v-model="nameQuery"
           placeholder="Search by item name"
           @input="searchByName"
+          @keyup.enter="addFirstNameMatch"
         />
+        <Button label="Add" icon="pi pi-plus" @click="addManualName" />
       </div>
 
       <div v-if="nameResults.length" class="results">
@@ -185,21 +256,25 @@ const checkout = async () => {
           v-for="item in nameResults"
           :key="item.id"
           class="result-row"
-          @click="addFromNameResult(item)"
+          @click="addFromName(item)"
         >
           {{ item.name }} — ₱{{ item.price }}
         </div>
       </div>
 
       <small class="hint">
-        Scan barcode or search by name.
+        Scan barcode or search by name
       </small>
 
       <Card class="cart-card">
         <template #title>Current Cart</template>
 
         <template #content>
-          <DataTable :value="cart" v-if="cart.length" responsiveLayout="scroll">
+          <DataTable
+            :value="cartStore.cart"
+            v-if="cartStore.cart.length"
+            responsiveLayout="scroll"
+          >
             <Column field="name" header="Item" />
 
             <Column header="Qty">
@@ -224,7 +299,12 @@ const checkout = async () => {
 
             <Column header="">
               <template #body="{ data }">
-                <Button icon="pi pi-trash" severity="danger" text @click="removeItem(data)" />
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  text
+                  @click="removeItem(data)"
+                />
               </template>
             </Column>
           </DataTable>
@@ -244,7 +324,7 @@ const checkout = async () => {
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cart.length || checkingOut"
+            :disabled="!cartStore.cart.length || loadingUser || checkingOut"
             :loading="checkingOut"
             @click="checkout"
           />
@@ -259,6 +339,7 @@ const checkout = async () => {
   min-height: calc(100vh - 40px);
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding-top: 40px;
 }
 
@@ -282,13 +363,13 @@ const checkout = async () => {
 
 .results {
   background: #2a2a2a;
-  border-radius: 10px;
+  border-radius: 12px;
   margin-bottom: 12px;
-  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 .result-row {
-  padding: 10px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 
@@ -305,12 +386,15 @@ const checkout = async () => {
 .cart-card {
   background: #1f1f1f;
   border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 .empty {
   text-align: center;
   color: #9ca3af;
   padding: 40px 0;
+  font-size: 1rem;
 }
 
 .qty {
@@ -321,6 +405,7 @@ const checkout = async () => {
 .total-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
 }
 
