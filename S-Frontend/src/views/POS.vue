@@ -109,7 +109,7 @@ const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
 
 /* ---------------- TOTAL ---------------- */
-const total = computed(() => cartStore.total.value)
+const total = cartStore.total
 
 
 /* ---------------- CHECKOUT ---------------- */
@@ -136,7 +136,8 @@ const checkout = async () => {
     return
   }
 
-  if (!cartStore.cart.length) {
+  if (!cartStore.cart.value.length) {
+
     toast.add({
       severity: "warn",
       summary: "Empty Cart",
@@ -151,7 +152,8 @@ const checkout = async () => {
   try {
     const payload = {
       user_id: userId.value,
-      items: cartStore.cart.map(i => ({
+      items: cartStore.cart.value.map(i => ({
+
         item_id: i.item_id,
         quantity: i.quantity
       }))
@@ -212,6 +214,8 @@ const checkout = async () => {
           <DataTable
             :value="cartStore.cart"
             v-if="cartStore.cart.length"
+
+
             responsiveLayout="scroll"
           >
             <Column field="name" header="Item" />
@@ -264,6 +268,8 @@ const checkout = async () => {
             icon="pi pi-credit-card"
             class="pay"
             :disabled="!cartStore.cart.length || loadingUser || checkingOut"
+
+
             :loading="checkingOut"
             @click="checkout"
           />
