@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue"
+import { storeToRefs } from "pinia"
 import api from "../services/api"
 import { useCartStore } from "../stores/cartStore"
 
@@ -14,24 +15,19 @@ import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
 const cartStore = useCartStore()
+const { cart, total } = storeToRefs(cartStore)
 
 const manualBarcode = ref("")
-const nameQuery = ref("")
-const nameResults = ref([])
-
 const userId = ref(null)
+
 const loadingUser = ref(true)
 const checkingOut = ref(false)
 
 let scanBuffer = ""
 let scanTimeout = null
-let nameSearchTimeout = null
 
 const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
-
-const searchItemsByName = (q) =>
-  api.get(`/items/?search=${encodeURIComponent(q)}`)
 
 const createTransaction = (payload) =>
   api.post("/sales", payload)
@@ -40,7 +36,7 @@ const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
-  } catch {
+  } catch (err) {
     toast.add({
       severity: "error",
       summary: "Session Expired",
@@ -94,70 +90,15 @@ const addByBarcode = async (barcode) => {
   }
 }
 
-const addManualBarcode = async () => {
+const addManual = async () => {
   if (!manualBarcode.value) return
   await addByBarcode(manualBarcode.value)
   manualBarcode.value = ""
 }
 
-const searchByName = () => {
-  clearTimeout(nameSearchTimeout)
-  nameSearchTimeout = setTimeout(async () => {
-    if (!nameQuery.value) {
-      nameResults.value = []
-      return
-    }
-    try {
-      const res = await searchItemsByName(nameQuery.value)
-      nameResults.value = res.data.slice(0, 6)
-    } catch {
-      nameResults.value = []
-    }
-  }, 250)
-}
-
-const addFirstNameMatch = () => {
-  if (nameResults.value.length) {
-    addFromName(nameResults.value[0])
-  }
-}
-
-const addFromName = (item) => {
-  cartStore.addItem(item)
-  nameQuery.value = ""
-  nameResults.value = []
-}
-
-const addManualName = async () => {
-  if (!nameQuery.value) return
-  try {
-    const res = await searchItemsByName(nameQuery.value)
-    if (res.data.length) {
-      cartStore.addItem(res.data[0])
-      nameQuery.value = ""
-      nameResults.value = []
-    } else {
-      toast.add({
-        severity: "warn",
-        summary: "Not Found",
-        detail: "No matching item",
-        life: 2000,
-      })
-    }
-  } catch {
-    toast.add({
-      severity: "error",
-      summary: "Search Failed",
-      detail: "Could not search items",
-      life: 2000,
-    })
-  }
-}
-
 const increaseQty = cartStore.increaseQty
 const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
-const total = cartStore.total
 
 const checkout = async () => {
   if (checkingOut.value) return
@@ -182,7 +123,7 @@ const checkout = async () => {
     return
   }
 
-  if (!cartStore.cart.length) {
+  if (!cart.value.length) {
     toast.add({
       severity: "warn",
       summary: "Empty Cart",
@@ -197,7 +138,7 @@ const checkout = async () => {
   try {
     const payload = {
       user_id: userId.value,
-      items: cartStore.cart.map(i => ({
+      items: cart.value.map(i => ({
         item_id: i.item_id,
         quantity: i.quantity
       }))
@@ -212,6 +153,7 @@ const checkout = async () => {
       detail: "Transaction completed successfully",
       life: 2500,
     })
+
   } catch (err) {
     toast.add({
       severity: "error",
@@ -235,35 +177,14 @@ const checkout = async () => {
       <div class="scan-row">
         <InputText
           v-model="manualBarcode"
-          placeholder="Scan or type barcode"
-          @keyup.enter="addManualBarcode"
+          placeholder="Type barcode (optional)"
+          @keyup.enter="addManual"
         />
-        <Button label="Add" icon="pi pi-plus" @click="addManualBarcode" />
-      </div>
-
-      <div class="scan-row">
-        <InputText
-          v-model="nameQuery"
-          placeholder="Search by item name"
-          @input="searchByName"
-          @keyup.enter="addFirstNameMatch"
-        />
-        <Button label="Add" icon="pi pi-plus" @click="addManualName" />
-      </div>
-
-      <div v-if="nameResults.length" class="results">
-        <div
-          v-for="item in nameResults"
-          :key="item.id"
-          class="result-row"
-          @click="addFromName(item)"
-        >
-          {{ item.name }} — ₱{{ item.price }}
-        </div>
+        <Button label="Add" icon="pi pi-plus" @click="addManual" />
       </div>
 
       <small class="hint">
-        Scan barcode or search by name
+        Scanner ready. You can scan anytime without focusing an input.
       </small>
 
       <Card class="cart-card">
@@ -271,8 +192,8 @@ const checkout = async () => {
 
         <template #content>
           <DataTable
-            :value="cartStore.cart"
-            v-if="cartStore.cart.length"
+            :value="cart"
+            v-if="cart.length"
             responsiveLayout="scroll"
           >
             <Column field="name" header="Item" />
@@ -310,7 +231,7 @@ const checkout = async () => {
           </DataTable>
 
           <div v-else class="empty">
-            Scan or search an item to start
+            Scan an item to start a transaction
           </div>
 
           <Divider />
@@ -324,7 +245,7 @@ const checkout = async () => {
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cartStore.cart.length || loadingUser || checkingOut"
+            :disabled="!cart.length || loadingUser || checkingOut"
             :loading="checkingOut"
             @click="checkout"
           />
@@ -358,23 +279,7 @@ const checkout = async () => {
 .scan-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 8px;
-}
-
-.results {
-  background: #2a2a2a;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.result-row {
-  padding: 10px 14px;
-  cursor: pointer;
-}
-
-.result-row:hover {
-  background: #3a3a3a;
+  margin-bottom: 6px;
 }
 
 .hint {
