@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue"
+import { storeToRefs } from "pinia"
 import api from "../services/api"
 import { useCartStore } from "../stores/cartStore"
 
@@ -14,6 +15,7 @@ import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
 const cartStore = useCartStore()
+const { cart, total } = storeToRefs(cartStore)
 
 const manualBarcode = ref("")
 const userId = ref(null)
@@ -98,8 +100,6 @@ const increaseQty = cartStore.increaseQty
 const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
 
-const total = cartStore.total
-
 const checkout = async () => {
   if (checkingOut.value) return
 
@@ -123,7 +123,7 @@ const checkout = async () => {
     return
   }
 
-  if (!cartStore.cart.length) {
+  if (!cart.value.length) {
     toast.add({
       severity: "warn",
       summary: "Empty Cart",
@@ -138,7 +138,7 @@ const checkout = async () => {
   try {
     const payload = {
       user_id: userId.value,
-      items: cartStore.cart.map(i => ({
+      items: cart.value.map(i => ({
         item_id: i.item_id,
         quantity: i.quantity
       }))
@@ -192,8 +192,8 @@ const checkout = async () => {
 
         <template #content>
           <DataTable
-            :value="cartStore.cart"
-            v-if="cartStore.cart.length"
+            :value="cart"
+            v-if="cart.length"
             responsiveLayout="scroll"
           >
             <Column field="name" header="Item" />
@@ -245,7 +245,7 @@ const checkout = async () => {
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cartStore.cart.length || loadingUser || checkingOut"
+            :disabled="!cart.length || loadingUser || checkingOut"
             :loading="checkingOut"
             @click="checkout"
           />
