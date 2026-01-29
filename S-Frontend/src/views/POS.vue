@@ -23,7 +23,10 @@ const checkingOut = ref(false)
 
 let scanBuffer = ""
 let scanTimeout = null
-let autoRefreshTimer = null
+
+const refreshPage = () => {
+  location.reload()
+}
 
 const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
@@ -35,7 +38,7 @@ const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
-  } catch (err) {
+  } catch {
     toast.add({
       severity: "error",
       summary: "Session Expired",
@@ -69,14 +72,10 @@ const handleKeydown = async (e) => {
 onMounted(() => {
   fetchMe()
   window.addEventListener("keydown", handleKeydown)
-  autoRefreshTimer = setInterval(() => {
-    location.reload()
-  }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown)
-  if (autoRefreshTimer) clearInterval(autoRefreshTimer)
 })
 
 const addByBarcode = async (barcode) => {
@@ -100,6 +99,7 @@ const addManual = async () => {
 }
 
 const increaseQty = cartStore.increaseQty
+consta
 const decreaseQty = cartStore.decreaseQty
 const removeItem = cartStore.removeItem
 
@@ -186,6 +186,7 @@ const checkout = async () => {
           @keyup.enter="addManual"
         />
         <Button label="Add" icon="pi pi-plus" @click="addManual" />
+        <Button label="Refresh" icon="pi pi-refresh" severity="secondary" @click="refreshPage" />
       </div>
 
       <small class="hint">
