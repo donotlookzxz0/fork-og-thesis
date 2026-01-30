@@ -131,11 +131,28 @@ function peso(v) {
   return `₱${Number(v || 0).toFixed(2)}`
 }
 
+/* ✅ FIXED SAME-DAY RANGE BUG */
 function inRange(dateStr) {
   if (!startDate.value && !endDate.value) return true
+
   const d = new Date(dateStr)
-  if (startDate.value && d < startDate.value) return false
-  if (endDate.value && d > endDate.value) return false
+
+  let start = null
+  let end = null
+
+  if (startDate.value) {
+    start = new Date(startDate.value)
+    start.setHours(0, 0, 0, 0)
+  }
+
+  if (endDate.value) {
+    end = new Date(endDate.value)
+    end.setHours(23, 59, 59, 999)
+  }
+
+  if (start && d < start) return false
+  if (end && d > end) return false
+
   return true
 }
 
