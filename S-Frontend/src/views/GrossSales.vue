@@ -97,7 +97,6 @@
 import { ref, computed } from "vue"
 import api from "../services/api"
 
-/* PrimeVue */
 import Card from "primevue/card"
 import Button from "primevue/button"
 import Calendar from "primevue/calendar"
@@ -107,8 +106,6 @@ import Toast from "primevue/toast"
 import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
-
-/* ---------------- STATE ---------------- */
 
 const startDate = ref(null)
 const endDate = ref(null)
@@ -131,18 +128,22 @@ function peso(v) {
   return `₱${Number(v || 0).toFixed(2)}`
 }
 
-/* ✅ DATE-ONLY SAFE COMPARISON */
+/* ✅ LOCAL DATE STRING — NO TIMEZONE */
 
-function toYMD(d) {
-  return new Date(d).toISOString().slice(0, 10)
+function toLocalYMD(d) {
+  const dt = new Date(d)
+  const y = dt.getFullYear()
+  const m = String(dt.getMonth() + 1).padStart(2, "0")
+  const day = String(dt.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
 }
 
 function inRange(dateStr) {
   if (!startDate.value && !endDate.value) return true
 
-  const tx = toYMD(dateStr)
-  const start = startDate.value ? toYMD(startDate.value) : null
-  const end = endDate.value ? toYMD(endDate.value) : null
+  const tx = toLocalYMD(dateStr)
+  const start = startDate.value ? toLocalYMD(startDate.value) : null
+  const end = endDate.value ? toLocalYMD(endDate.value) : null
 
   if (start && tx < start) return false
   if (end && tx > end) return false
