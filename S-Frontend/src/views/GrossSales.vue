@@ -81,11 +81,27 @@
           <Column field="date" header="Date" />
           <Column field="transaction_id" header="Transaction ID" />
           <Column field="items_count" header="Items" />
+
           <Column header="Gross Amount">
             <template #body="slotProps">
               {{ peso(slotProps.data.gross) }}
             </template>
           </Column>
+
+          <!-- ✅ NEW — ITEMS SOLD -->
+          <Column header="Items Sold">
+            <template #body="slotProps">
+              <ul class="items-list">
+                <li v-for="i in slotProps.data.items" :key="i.item_id">
+                  {{ i.item_name }}
+                  ({{ i.category }})
+                  — x{{ i.quantity }}
+                  — ₱{{ i.price_at_sale }}
+                </li>
+              </ul>
+            </template>
+          </Column>
+
         </DataTable>
 
       </template>
@@ -128,7 +144,7 @@ function peso(v) {
   return `₱${Number(v || 0).toFixed(2)}`
 }
 
-/* ✅ LOCAL DATE STRING — NO TIMEZONE */
+/* DATE FILTER — LOCAL SAFE */
 
 function toLocalYMD(d) {
   const dt = new Date(d)
@@ -163,18 +179,19 @@ async function loadSales() {
       .filter(t => inRange(t.date))
       .map(t => {
         let gross = 0
-        let items = 0
+        let itemsCount = 0
 
         for (const i of t.items) {
           gross += i.quantity * i.price_at_sale
-          items += i.quantity
+          itemsCount += i.quantity
         }
 
         return {
           transaction_id: t.transaction_id,
           date: new Date(t.date).toLocaleString(),
           gross,
-          items_count: items
+          items_count: itemsCount,
+          items: t.items   // ✅ pass through
         }
       })
 
@@ -204,5 +221,11 @@ async function loadSales() {
 .text-3xl {
   font-size: 1.75rem;
   font-weight: bold;
+}
+
+.items-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.9rem;
 }
 </style>
