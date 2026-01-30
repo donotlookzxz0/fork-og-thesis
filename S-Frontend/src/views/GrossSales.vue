@@ -1,5 +1,8 @@
 <template>
   <div class="p-4">
+
+    <Toast position="top-center" />
+
     <Card>
       <template #title>
         Gross Sales Overview
@@ -24,6 +27,7 @@
               label="Load Sales"
               icon="pi pi-search"
               class="w-full"
+              :loading="loading"
               @click="loadSales"
             />
           </div>
@@ -36,7 +40,7 @@
               <template #content>
                 <div class="text-xl font-bold">Total Gross Sales</div>
                 <div class="text-3xl mt-2">
-                  {{ currency(totalGross) }}
+                  {{ peso(totalGross) }}
                 </div>
               </template>
             </Card>
@@ -47,7 +51,7 @@
               <template #content>
                 <div class="text-xl font-bold">Transactions</div>
                 <div class="text-3xl mt-2">
-                  {{ sales.length }}
+                  {{ rows.length }}
                 </div>
               </template>
             </Card>
@@ -58,27 +62,28 @@
               <template #content>
                 <div class="text-xl font-bold">Average Sale</div>
                 <div class="text-3xl mt-2">
-                  {{ currency(avgSale) }}
+                  {{ peso(avgSale) }}
                 </div>
               </template>
             </Card>
           </div>
         </div>
 
-        <!-- Sales Table -->
+        <!-- Table -->
         <DataTable
-          :value="sales"
+          :value="rows"
           paginator
           :rows="10"
           stripedRows
           responsiveLayout="scroll"
+          :loading="loading"
         >
           <Column field="date" header="Date" />
           <Column field="transaction_id" header="Transaction ID" />
-          <Column field="items" header="Items" />
-          <Column field="gross" header="Gross Amount">
+          <Column field="items_count" header="Items" />
+          <Column header="Gross Amount">
             <template #body="slotProps">
-              {{ currency(slotProps.data.gross) }}
+              {{ peso(slotProps.data.gross) }}
             </template>
           </Column>
         </DataTable>
@@ -98,59 +103,90 @@ import Button from "primevue/button"
 import Calendar from "primevue/calendar"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
+
+const toast = useToast()
 
 /* ---------------- STATE ---------------- */
 
 const startDate = ref(null)
 const endDate = ref(null)
-const sales = ref([])
+const rows = ref([])
+const loading = ref(false)
 
 /* ---------------- COMPUTED ---------------- */
 
 const totalGross = computed(() =>
-  sales.value.reduce((sum, s) => sum + Number(s.gross || 0), 0)
+  rows.value.reduce((s, r) => s + r.gross, 0)
 )
 
 const avgSale = computed(() =>
-  sales.value.length
-    ? totalGross.value / sales.value.length
-    : 0
+  rows.value.length ? totalGross.value / rows.value.length : 0
 )
 
-/* ---------------- METHODS ---------------- */
+/* ---------------- HELPERS ---------------- */
 
-function currency(v) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD"
-  }).format(v)
+function peso(v) {
+  return `₱${Number(v || 0).toFixed(2)}`
 }
 
+function inRange(dateStr) {
+  if (!startDate.value && !endDate.value) return true
+  const d = new Date(dateStr)
+  if (startDate.value && d < startDate.value) return false
+  if (endDate.value && d > endDate.value) return false
+  return true
+}
+
+/* ---------------- MAIN ---------------- */
+
 async function loadSales() {
+  loading.value = true
+
   try {
-    const res = await api.get("/sales/gross", {
-      params: {
-        start: startDate.value,
-        end: endDate.value
-      }
+    const res = await api.get("/sales")
+
+    const mapped = res.data
+      .filter(t => inRange(t.date))
+      .map(t => {
+        let gross = 0
+        let items = 0
+
+        for (const i of t.items) {
+          gross += i.quantity * i.price_at_sale
+          items += i.quantity
+        }
+
+        return {
+          transaction_id: t.transaction_id,
+          date: new Date(t.date).toLocaleString(),
+          gross,
+          items_count: items
+        }
+      })
+
+    rows.value = mapped
+
+    toast.add({
+      severity: "success",
+      summary: "Loaded",
+      detail: "Sales computed from transactions",
+      life: 2500
     })
 
-    // Expected response format example:
-    // [
-    //   { date, transaction_id, items, gross }
-    // ]
-
-    sales.value = res.data
   } catch (err) {
-    console.error("Failed to load gross sales:", err)
+    console.error(err)
 
-    // fallback mock so page still works during backend dev
-    sales.value = [
-      { date: "2026-01-01", transaction_id: "TX1001", items: 4, gross: 120.50 },
-      { date: "2026-01-01", transaction_id: "TX1002", items: 2, gross: 59.99 },
-      { date: "2026-01-02", transaction_id: "TX1003", items: 6, gross: 210.00 }
-    ]
+    toast.add({
+      severity: "error",
+      summary: "Load Failed",
+      detail: "Could not load sales",
+      life: 3000
+    })
   }
+
+  loading.value = false
 }
 </script>
 
