@@ -131,27 +131,21 @@ function peso(v) {
   return `₱${Number(v || 0).toFixed(2)}`
 }
 
-/* ✅ FIXED SAME-DAY RANGE BUG */
+/* ✅ DATE-ONLY SAFE COMPARISON */
+
+function toYMD(d) {
+  return new Date(d).toISOString().slice(0, 10)
+}
+
 function inRange(dateStr) {
   if (!startDate.value && !endDate.value) return true
 
-  const d = new Date(dateStr)
+  const tx = toYMD(dateStr)
+  const start = startDate.value ? toYMD(startDate.value) : null
+  const end = endDate.value ? toYMD(endDate.value) : null
 
-  let start = null
-  let end = null
-
-  if (startDate.value) {
-    start = new Date(startDate.value)
-    start.setHours(0, 0, 0, 0)
-  }
-
-  if (endDate.value) {
-    end = new Date(endDate.value)
-    end.setHours(23, 59, 59, 999)
-  }
-
-  if (start && d < start) return false
-  if (end && d > end) return false
+  if (start && tx < start) return false
+  if (end && tx > end) return false
 
   return true
 }
@@ -164,7 +158,7 @@ async function loadSales() {
   try {
     const res = await api.get("/sales")
 
-    const mapped = res.data
+    rows.value = res.data
       .filter(t => inRange(t.date))
       .map(t => {
         let gross = 0
@@ -182,8 +176,6 @@ async function loadSales() {
           items_count: items
         }
       })
-
-    rows.value = mapped
 
     toast.add({
       severity: "success",
