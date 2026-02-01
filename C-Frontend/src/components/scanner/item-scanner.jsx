@@ -17,7 +17,6 @@ const PageWrapper = ({ children }) => (
 const Section = ({ children }) => (
   <div
     style={{
-      marginTop: 24,
       padding: 24,
       borderRadius: 16,
       background: "#ffffff",
@@ -43,7 +42,6 @@ const PrimaryButton = ({ children, onClick, style }) => (
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
       ...style,
     }}
   >
@@ -67,6 +65,8 @@ const Scanner = ({ cart, setCart }) => {
     successItem,
     fetchProduct,
     suggestions,
+    selectedItem, 
+    setSelectedItem
   } = useScanner({
     cart,
     onAddToCart: addToCart,
@@ -75,42 +75,80 @@ const Scanner = ({ cart, setCart }) => {
 
   return (
     <PageWrapper>
-      <PrimaryButton
-        onClick={() => navigate("/cart")}
-        style={{ marginLeft: "auto" }}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 5,
+          fontSize: 14,
+        }}
       >
-        <FontAwesomeIcon icon={faCartShopping} />
-        Go to Cart
-      </PrimaryButton>
+        <PrimaryButton
+          onClick={() => navigate("/best")}
+        >
+          Recommendations
+        </PrimaryButton>
 
+        <PrimaryButton
+          onClick={() => navigate("/cart")}
+        >
+          <FontAwesomeIcon icon={faCartShopping} />
+          Go to Cart
+        </PrimaryButton>
+      </div>
       <h2 style={{ color: "#000", marginTop: 24 }}>
-        <FontAwesomeIcon icon={faCamera} /> Barcode Scanner
+        Search or Scan Products
       </h2>
 
       <div className="scanner-layout">
         {/* LEFT COLUMN */}
         <div className="scanner-column">
           <Section>
-            <PrimaryButton
-              onClick={() => setIsScanning((s) => !s)}
-              style={{
-                background: isScanning ? "#DC2626" : "#000",
-                marginBottom: 16,
-              }}
-            >
-              {isScanning ? "Stop Camera" : "Start Camera"}
-            </PrimaryButton>
+            <div className="scanner-actions unified-search">
+              <div className="search-input-wrapper">
+                <input
+                  className="scanner-input unified-input"
+                  value={selectedItem ? selectedItem.name : nameInput || barcodeInput}
+                  onChange={(e) => {
+                    setBarcodeInput(e.target.value);
+                    setNameInput(e.target.value);
+                    setSelectedItem(null);
+                  }}
+                  placeholder="Search product name/barcode"
+                />
+            
+              {nameInput && suggestions.length > 0 && (
+              <div className="suggestions">
+                {suggestions.map((item) => (
+                  <div
+                    key={item.barcode}
+                    className="suggestion-item"
+                    onClick={() => {
+                      setBarcodeInput(item.barcode);
+                      setSelectedItem(item);        
+                      setNameInput("");  
+                    }}
+                  >
+                    {item.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>   
 
-            <div className="scanner-actions">
-              <input
-                className="scanner-input"
-                value={barcodeInput}
-                onChange={(e) => setBarcodeInput(e.target.value)}
-                placeholder="Enter barcode manually"
-              />
               <PrimaryButton onClick={() => fetchProduct(barcodeInput)}>
                 Add
               </PrimaryButton>
+              <p className="scanner-actions separation">or</p>
+              <button
+                  className="camera-icon-btn"
+                  onClick={() => setIsScanning((s) => !s)}
+                  type="button"
+                >
+                <FontAwesomeIcon icon={faCamera} />
+                  Scan
+              </button>
             </div>
 
             {isScanning && (
@@ -122,30 +160,6 @@ const Scanner = ({ cart, setCart }) => {
               </div>
             )}
 
-            <input
-              className="scanner-input"
-              style={{ marginTop: 16 }}
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Add item by name"
-            />
-
-            {nameInput && suggestions.length > 0 && (
-              <div className="suggestions">
-                {suggestions.map((item) => (
-                  <div
-                    key={item.barcode}
-                    className="suggestion-item"
-                    onClick={() => {
-                      fetchProduct(item.barcode);
-                      setNameInput("");
-                    }}
-                  >
-                    {item.name}
-                  </div>
-                ))}
-              </div>
-            )}
           </Section>
         </div>
 
@@ -153,7 +167,7 @@ const Scanner = ({ cart, setCart }) => {
         <div className="scanner-column">
           <Section>
             <h3 style={{ color: "#000" }}>
-              <FontAwesomeIcon icon={faPaperclip} /> Scanned Items
+              <FontAwesomeIcon icon={faPaperclip} /> Added Items
             </h3>
 
             {!cart.length ? (

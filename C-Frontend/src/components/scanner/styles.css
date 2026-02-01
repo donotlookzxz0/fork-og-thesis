@@ -25,6 +25,51 @@
   margin-bottom: 16px;
 }
 
+.separation {
+  margin: 0;
+  font-weight: 500;
+}
+
+.unified-search {
+  align-items: center;
+}
+
+.unified-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.camera-icon-btn {
+display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #000000; 
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0; 
+}
+
+.camera-icon-btn:hover {
+  opacity: 0.7;
+}
+
+.search-input-wrapper .scanner-input {
+  padding-right: 36px;
+}
+
 .scanner-input {
   flex: 1;
   padding: 10px;
@@ -83,12 +128,17 @@
 }
 
 .suggestions {
+  position: absolute;
+  top: calc(100% + 6px); 
+  left: 0;
+  right: 0;
   background: white;
-  margin-top: 6px;
   border: 1px solid #CBD5E1;
   border-radius: 8px;
   max-height: 180px;
   overflow-y: auto;
+  z-index: 50; 
+  box-shadow: 0 8px 20px rgba(0,0,0,.12)
 }
 
 .suggestion-item {
@@ -113,6 +163,13 @@
     align-items: center;
   }
 
+  .camera-icon-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .scanner-column { 
     width: 100%;        
     max-width: 500px;   
@@ -124,6 +181,5 @@
 
   .scanner-actions button {
     width: 100%;
-    
   }
 }
