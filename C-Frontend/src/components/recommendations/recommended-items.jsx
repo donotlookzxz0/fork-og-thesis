@@ -18,16 +18,12 @@ function RecommendedItems({ setCart }) {
     const fetchRecommendations = async () => {
       setLoading(true);
       try {
-        const res = await api.get("/recommendations");
+        const res = await api.get("/recommendations/me");
 
-        // Flatten recommendations from all users
-        const flattened = res.data
-          .flatMap((u) => u.recommendations || [])
-          .slice(0, 5);
-
-        setItems(flattened);
+        setItems(res.data.recommendations || []);
       } catch (err) {
         console.error("Error loading recommendations:", err);
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -59,13 +55,13 @@ function RecommendedItems({ setCart }) {
       <div className="recommended-container">
         <h1 className="recommended-title">Recommended Items</h1>
         <p className="recommended-subtitle">
-          AI-powered product suggestions based on customer behavior
+          AI-powered product suggestions based on your purchases
         </p>
-    
+
         {loading ? (
           <p className="loading">Loading recommendations...</p>
         ) : items.length === 0 ? (
-          <p className="no-data">No recommendations available.</p>
+          <p className="no-data">Start shopping to get personalized recommendations!.</p>
         ) : (
           <div className="recommended-grid">
             {items.map((item, index) => (
