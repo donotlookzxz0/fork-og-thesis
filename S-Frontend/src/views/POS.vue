@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue"
+import { ref, onMounted, onBeforeUnmount, computed } from "vue"
 import { storeToRefs } from "pinia"
 import api from "../services/api"
 import { useCartStore } from "../stores/cartStore"
@@ -22,6 +22,13 @@ const userId = ref(null)
 
 const loadingUser = ref(true)
 const checkingOut = ref(false)
+
+const cashGiven = ref(null)
+
+const change = computed(() => {
+  if (cashGiven.value === null || cashGiven.value === "") return 0
+  return Number(cashGiven.value) - total.value
+})
 
 let scanBuffer = ""
 let scanTimeout = null
@@ -133,6 +140,16 @@ const checkout = async () => {
     return
   }
 
+  if (change.value < 0) {
+    toast.add({
+      severity: "warn",
+      summary: "Insufficient Cash",
+      detail: "Cash given is less than total amount",
+      life: 2500,
+    })
+    return
+  }
+
   checkingOut.value = true
 
   try {
@@ -146,6 +163,7 @@ const checkout = async () => {
 
     await createTransaction(payload)
     cartStore.clearCart()
+    cashGiven.value = null
 
     toast.add({
       severity: "success",
@@ -241,11 +259,37 @@ const checkout = async () => {
             <h2 class="amount">₱{{ total.toFixed(2) }}</h2>
           </div>
 
+          <div class="cash-row">
+            <span>Cash Given</span>
+            <InputText
+              v-model.number="cashGiven"
+              type="number"
+              placeholder="₱0.00"
+              class="cash-input"
+            />
+          </div>
+
+          <div
+            class="change-row"
+            v-if="cashGiven !== null && cashGiven !== ''"
+          >
+            <span>Change</span>
+            <span class="change-amount">
+              ₱{{ change.toFixed(2) }}
+            </span>
+          </div>
+
           <Button
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cart.length || loadingUser || checkingOut"
+            :disabled="
+              !cart.length ||
+              loadingUser ||
+              checkingOut ||
+              cashGiven === null ||
+              change < 0
+            "
             :loading="checkingOut"
             @click="checkout"
           />
@@ -317,6 +361,25 @@ const checkout = async () => {
 .amount {
   color: #34d399;
   font-weight: bold;
+}
+
+.cash-row,
+.change-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cash-input {
+  width: 160px;
+  text-align: right;
+}
+
+.change-amount {
+  color: #ef4444;
+  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .pay {
