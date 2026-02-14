@@ -43,7 +43,7 @@ CORS(
 
 # ⚠️ DO NOT ADD ANY before_request OPTIONS HANDLER
 # Flask-CORS already handles preflight correctly
-# Adding one will BREAK cookies on mobile / other devices
+
 
 
 # --------------------------------------------------

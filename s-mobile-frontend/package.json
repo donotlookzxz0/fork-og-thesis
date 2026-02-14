@@ -1,5 +1,5 @@
 {
-  "name": "pi-mart",
+  "name": "s-mobile-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,14 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@primeuix/themes": "^2.0.3",
-    "axios": "^1.13.2",
-    "chart.js": "^4.5.1",
-    "pinia": "^3.0.4",
-    "primeicons": "^7.0.0",
-    "primevue": "^4.5.4",
-    "vue": "^3.5.24",
-    "vue-router": "^4.6.4"
+    "vue": "^3.5.24"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",

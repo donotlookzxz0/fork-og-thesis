@@ -13,6 +13,7 @@ import ItemMovement from "../views/ItemMovement.vue"
 import StockoutRisk from "../views/StockoutRisk.vue"
 import Recommendations from "../views/Recommendations.vue"
 import WalletTopUp from "../views/WalletTopUp.vue"
+import GrossSales from "../views/GrossSales.vue"   // ✅ NEW
 
 /* ---------------- ROUTES ---------------- */
 
@@ -30,7 +31,8 @@ const routes = [
   { path: "/analytics/demand", component: DemandForecast },
   { path: "/analytics/movement", component: ItemMovement },
   { path: "/analytics/stockout", component: StockoutRisk },
-  { path: "/analytics/recommendations", component: Recommendations }
+  { path: "/analytics/recommendations", component: Recommendations },
+  { path: "/analytics/gross-sales", component: GrossSales } // ✅ NEW
 ]
 
 const router = createRouter({

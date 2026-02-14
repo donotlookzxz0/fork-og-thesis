@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue"
+import { ref, onMounted, onBeforeUnmount, computed } from "vue"
+import { storeToRefs } from "pinia"
 import api from "../services/api"
+import { useCartStore } from "../stores/cartStore"
 
-// PrimeVue components
 import InputText from "primevue/inputtext"
 import Button from "primevue/button"
 import DataTable from "primevue/datatable"
@@ -12,35 +13,37 @@ import Divider from "primevue/divider"
 import Toast from "primevue/toast"
 import { useToast } from "primevue/usetoast"
 
-/* ---------------- TOAST ---------------- */
 const toast = useToast()
+const cartStore = useCartStore()
+const { cart, total } = storeToRefs(cartStore)
 
-/* ---------------- STATE ---------------- */
 const manualBarcode = ref("")
-const cart = ref([])
 const userId = ref(null)
 
 const loadingUser = ref(true)
 const checkingOut = ref(false)
 
+const cashGiven = ref(null)
+
+const change = computed(() => {
+  if (cashGiven.value === null || cashGiven.value === "") return 0
+  return Number(cashGiven.value) - total.value
+})
+
 let scanBuffer = ""
 let scanTimeout = null
 
-/* ---------------- API ---------------- */
 const getItemByBarcode = (barcode) =>
   api.get(`/items/barcode/${barcode}`)
 
 const createTransaction = (payload) =>
   api.post("/sales", payload)
 
-/* ---------------- AUTH USER ---------------- */
 const fetchMe = async () => {
   try {
     const res = await api.get("/users/me")
     userId.value = res.data.id
   } catch (err) {
-    console.error("Auth error in POS:", err)
-
     toast.add({
       severity: "error",
       summary: "Session Expired",
@@ -52,7 +55,6 @@ const fetchMe = async () => {
   }
 }
 
-/* ---------------- SCANNER (AUTO) ---------------- */
 const handleKeydown = async (e) => {
   if (["Shift", "Alt", "Control"].includes(e.key)) return
 
@@ -81,25 +83,10 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown)
 })
 
-/* ---------------- CART ---------------- */
 const addByBarcode = async (barcode) => {
   try {
     const res = await getItemByBarcode(barcode)
-    const item = res.data
-
-    const existing = cart.value.find(c => c.item_id === item.id)
-
-    if (existing) {
-      existing.quantity++
-    } else {
-      cart.value.push({
-        item_id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: 1
-      })
-    }
-
+    cartStore.addItem(res.data)
   } catch {
     toast.add({
       severity: "warn",
@@ -116,21 +103,10 @@ const addManual = async () => {
   manualBarcode.value = ""
 }
 
-const increaseQty = (row) => row.quantity++
-const decreaseQty = (row) => {
-  if (row.quantity > 1) row.quantity--
-}
+const increaseQty = cartStore.increaseQty
+const decreaseQty = cartStore.decreaseQty
+const removeItem = cartStore.removeItem
 
-const removeItem = (row) => {
-  cart.value = cart.value.filter(i => i.item_id !== row.item_id)
-}
-
-/* ---------------- TOTAL ---------------- */
-const total = computed(() =>
-  cart.value.reduce((sum, i) => sum + i.price * i.quantity, 0)
-)
-
-/* ---------------- CHECKOUT ---------------- */
 const checkout = async () => {
   if (checkingOut.value) return
 
@@ -164,6 +140,16 @@ const checkout = async () => {
     return
   }
 
+  if (change.value < 0) {
+    toast.add({
+      severity: "warn",
+      summary: "Insufficient Cash",
+      detail: "Cash given is less than total amount",
+      life: 2500,
+    })
+    return
+  }
+
   checkingOut.value = true
 
   try {
@@ -176,11 +162,9 @@ const checkout = async () => {
     }
 
     await createTransaction(payload)
+    cartStore.clearCart()
+    cashGiven.value = null
 
-    // ✅ CLEAR CART
-    cart.value = []
-
-    // ✅ SUCCESS POPUP (CENTER STYLE)
     toast.add({
       severity: "success",
       summary: "Success",
@@ -189,8 +173,6 @@ const checkout = async () => {
     })
 
   } catch (err) {
-    console.error("Checkout error:", err)
-
     toast.add({
       severity: "error",
       summary: "Checkout Failed",
@@ -205,14 +187,11 @@ const checkout = async () => {
 
 <template>
   <div class="pos-wrapper">
-
-    <!-- 🔔 TOAST POPUPS (CENTER STYLE SAME AS PAYMENT PAGE) -->
     <Toast position="top-center" />
 
     <div class="pos">
       <h1 class="title">POS Mode</h1>
 
-      <!-- SCAN BAR -->
       <div class="scan-row">
         <InputText
           v-model="manualBarcode"
@@ -226,7 +205,6 @@ const checkout = async () => {
         Scanner ready. You can scan anytime without focusing an input.
       </small>
 
-      <!-- CART CONTAINER -->
       <Card class="cart-card">
         <template #title>Current Cart</template>
 
@@ -281,11 +259,37 @@ const checkout = async () => {
             <h2 class="amount">₱{{ total.toFixed(2) }}</h2>
           </div>
 
+          <div class="cash-row">
+            <span>Cash Given</span>
+            <InputText
+              v-model.number="cashGiven"
+              type="number"
+              placeholder="₱0.00"
+              class="cash-input"
+            />
+          </div>
+
+          <div
+            class="change-row"
+            v-if="cashGiven !== null && cashGiven !== ''"
+          >
+            <span>Change</span>
+            <span class="change-amount">
+              ₱{{ change.toFixed(2) }}
+            </span>
+          </div>
+
           <Button
             label="PAY"
             icon="pi pi-credit-card"
             class="pay"
-            :disabled="!cart.length || loadingUser || checkingOut"
+            :disabled="
+              !cart.length ||
+              loadingUser ||
+              checkingOut ||
+              cashGiven === null ||
+              change < 0
+            "
             :loading="checkingOut"
             @click="checkout"
           />
@@ -296,7 +300,6 @@ const checkout = async () => {
 </template>
 
 <style scoped>
-/* FULL PAGE CENTERING */
 .pos-wrapper {
   min-height: calc(100vh - 40px);
   display: flex;
@@ -305,21 +308,18 @@ const checkout = async () => {
   padding-top: 40px;
 }
 
-/* MAIN PANEL */
 .pos {
   width: 100%;
   max-width: 720px;
   padding: 20px;
 }
 
-/* HEADER */
 .title {
   color: #ffffff;
   font-size: 1.8rem;
   margin-bottom: 16px;
 }
 
-/* SCAN BAR */
 .scan-row {
   display: flex;
   gap: 10px;
@@ -332,7 +332,6 @@ const checkout = async () => {
   margin-bottom: 16px;
 }
 
-/* CART CONTAINER */
 .cart-card {
   background: #1f1f1f;
   border-radius: 18px;
@@ -340,7 +339,6 @@ const checkout = async () => {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* EMPTY STATE */
 .empty {
   text-align: center;
   color: #9ca3af;
@@ -348,13 +346,11 @@ const checkout = async () => {
   font-size: 1rem;
 }
 
-/* QTY */
 .qty {
   margin: 0 8px;
   font-weight: bold;
 }
 
-/* TOTAL + PAY */
 .total-row {
   display: flex;
   justify-content: space-between;
@@ -365,6 +361,25 @@ const checkout = async () => {
 .amount {
   color: #34d399;
   font-weight: bold;
+}
+
+.cash-row,
+.change-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cash-input {
+  width: 160px;
+  text-align: right;
+}
+
+.change-amount {
+  color: #ef4444;
+  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .pay {
