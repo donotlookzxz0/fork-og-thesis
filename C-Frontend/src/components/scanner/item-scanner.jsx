@@ -66,7 +66,9 @@ const Scanner = ({ cart, setCart }) => {
     fetchProduct,
     suggestions,
     selectedItem, 
-    setSelectedItem
+    setSelectedItem,
+    scanError, 
+    setScanError
   } = useScanner({
     cart,
     onAddToCart: addToCart,
@@ -105,6 +107,7 @@ const Scanner = ({ cart, setCart }) => {
         {/* LEFT COLUMN */}
         <div className="scanner-column">
           <Section>
+            {scanError && <p className="scan-error">{scanError}</p>}
             <div className="scanner-actions unified-search">
               <div className="search-input-wrapper">
                 <input
@@ -114,6 +117,7 @@ const Scanner = ({ cart, setCart }) => {
                     setBarcodeInput(e.target.value);
                     setNameInput(e.target.value);
                     setSelectedItem(null);
+                    setScanError(null);
                   }}
                   placeholder="Search product name/barcode"
                 />

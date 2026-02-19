@@ -11,15 +11,15 @@ export const useCartActions = (setCart) => {
     );
   };
 
-  const changeQuantity = (barcode, qty) => {
-    setCart((prev) =>
-      prev.map((i) =>
-        i.barcode === barcode
-          ? { ...i, quantity: Math.max(1, qty) }
-          : i
-      )
-    );
-  };
+ const changeQuantity = (barcode, qty, maxStock) => {
+  setCart((prev) =>
+    prev.map((i) =>
+      i.barcode === barcode
+        ? { ...i, quantity: Math.min(Math.max(1, qty), maxStock ?? qty) }
+        : i
+    )
+  );
+};
 
   const deleteItem = (barcode) => {
     setCart((prev) => prev.filter((i) => i.barcode !== barcode));
