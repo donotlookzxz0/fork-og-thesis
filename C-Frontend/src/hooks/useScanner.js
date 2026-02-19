@@ -16,6 +16,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [successItem, setSuccessItem] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [scanError, setScanError] = useState(null);
 
   /* LOAD ITEMS ONCE */
   useEffect(() => {
@@ -27,44 +28,55 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
   /* FETCH PRODUCT */
   const fetchProduct = useCallback(
-    async (barcode, { resumeScan = false } = {}) => {
-      if (!barcode || isProcessingRef.current) return;
-      
-      isProcessingRef.current = true; // Lock processing
-      
-      try {
-        const { data } = await api.get(`/items/barcode/${barcode}`);
-        const product = { ...data, price: parseFloat(data.price) };
-        const existing = cart.find((i) => i.barcode === product.barcode);
-        
-        existing
-          ? onQuantityChange(product.barcode, existing.quantity + 1)
-          : onAddToCart({ ...product, quantity: 1 });
-        
-        setSuccessItem(product);
-        setIsScanning(false);
-        setBarcodeInput("");
-        setNameInput("");
-        
-        // Clear any existing timeout
-        if (scanTimeoutRef.current) {
-          clearTimeout(scanTimeoutRef.current);
-        }
-        
-        scanTimeoutRef.current = setTimeout(() => {
-          setSuccessItem(null);
-          setSelectedItem(null);
-          lastScannedRef.current = null; // Reset last scanned
-          isProcessingRef.current = false; // Unlock processing
-          if (resumeScan) setIsScanning(true);
-        }, 1200);
-      } catch {
-        alert("Item not found");
-        isProcessingRef.current = false; // Unlock on error
+  async (barcode, { resumeScan = false } = {}) => {
+    if (!barcode || isProcessingRef.current) return;
+
+    isProcessingRef.current = true;
+
+    try {
+      const { data } = await api.get(`/items/barcode/${barcode}`);
+      const product = { ...data, price: parseFloat(data.price) };
+
+      if (product.quantity === 0) {
+        setScanError(`${product.name} is out of stock`);
+        isProcessingRef.current = false;
+        return;
       }
-    },
-    [cart, onAddToCart, onQuantityChange]
-  );
+
+      const existing = cart.find((i) => i.barcode === product.barcode);
+      const cartQty = existing ? existing.quantity : 0;
+
+      if (cartQty >= product.quantity) {
+       setScanError(`Not enough stock for ${product.name}`);
+        isProcessingRef.current = false;
+        return;
+      }
+
+      existing
+        ? onQuantityChange(product.barcode, existing.quantity + 1)
+        : onAddToCart({ ...product, quantity: 1 });
+
+      setSuccessItem(product);
+      setIsScanning(false);
+      setBarcodeInput("");
+      setNameInput("");
+
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+
+      scanTimeoutRef.current = setTimeout(() => {
+        setSuccessItem(null);
+        setSelectedItem(null);
+        lastScannedRef.current = null;
+        isProcessingRef.current = false;
+        if (resumeScan) setIsScanning(true);
+      }, 1200);
+    } catch {
+      setScanError("Item not found");
+      isProcessingRef.current = false;
+    }
+  },
+  [cart, onAddToCart, onQuantityChange]
+);
 
   /* CAMERA */
   useEffect(() => {
@@ -150,5 +162,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     suggestions,
     selectedItem,
     setSelectedItem,
+    scanError,
+    setScanError,
   };
 };

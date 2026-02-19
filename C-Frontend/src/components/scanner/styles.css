@@ -150,6 +150,11 @@ display: flex;
   background: #F3F4F6;
 }
 
+.scan-error {
+  color: #ea1e25;
+  font-size: 13px;
+}
+
 @media (max-width: 768px) {
   .page-wrapper {
     margin: 0;
@@ -181,5 +186,10 @@ display: flex;
 
   .scanner-actions button {
     width: 100%;
+  }
+
+  .scan-error {
+  color: #ea1e25;
+  font-size: 1em;
   }
 }
