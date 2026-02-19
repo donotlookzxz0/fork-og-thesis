@@ -38,7 +38,10 @@ export default function Register() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button disabled={loading}>Create Account</button>
+        <button disabled={loading}>
+          {loading && <span className="btn-spinner" />}
+          Create Account
+        </button>
 
         <p>
           Already have an account? <Link to="/login">Login</Link>
