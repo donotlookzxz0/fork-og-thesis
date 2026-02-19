@@ -155,6 +155,23 @@ def get_item_movement_forecast():
         for r in records
     ]), 200
 
+@ml_bp.route("/item-movement-forecast/best", methods=["GET"])
+def get_top_selling_items():
+    records = (
+        AIItemMovement.query
+        .order_by(AIItemMovement.avg_daily_sales.desc())
+        .limit(5)
+        .all()
+    )
+    return jsonify([
+        {
+            "name": r.item_name,
+            "avg_daily_sales": r.avg_daily_sales,
+            "price": r.item.price if r.item else None,
+            "barcode": r.item.barcode if r.item else None,
+        }
+        for r in records
+    ]), 200
 
 # =================================================
 # STOCK-OUT RISK FORECAST (NEURAL NETWORK SAFE)
