@@ -38,7 +38,10 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button disabled={loading}>Login</button>
+        <button disabled={loading}>
+          {loading && <span className="btn-spinner" />}
+          Login
+        </button>
 
         <p>
           No account? <Link to="/register">Register</Link>
