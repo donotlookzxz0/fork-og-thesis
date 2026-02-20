@@ -62,8 +62,6 @@ const loadForecast = async () => {
     ].map(c => c.category);
 
     categories.value = [...new Set(allCategories)];
-    await nextTick();
-    renderChart();
 
     toast.add({
       severity: "success",
@@ -210,6 +208,7 @@ const renderChart = () => {
       ],
     },
     options: {
+      animation: false,
       indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
@@ -236,7 +235,11 @@ const renderChart = () => {
 };
 
 watch(selectedCategory, computeDemand);
-watch(horizon, renderChart);
+
+watch([chartData, horizon], () => {
+  nextTick(() => renderChart());
+}, { deep: true });
+
 onMounted(loadForecast);
 </script>
 
