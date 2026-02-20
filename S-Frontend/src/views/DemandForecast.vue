@@ -183,9 +183,6 @@ const renderChart = () => {
     chart = null;
   }
 
-  const ctx = canvas.value.getContext("2d");
-  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
-
   const sorted = [...chartData.value].sort(
     (a, b) => b.predicted_quantity - a.predicted_quantity
   );
@@ -209,9 +206,11 @@ const renderChart = () => {
     },
     options: {
       animation: false,
-      indexAxis: "y",
       responsive: true,
+      resizeDelay: 200,
       maintainAspectRatio: false,
+      devicePixelRatio: 1,
+      indexAxis: "y",
       plugins: {
         legend: { display: false },
         tooltip: {

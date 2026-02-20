@@ -64,33 +64,44 @@ def create_forecast():
 
 
 @ml_bp.route("/forecast", methods=["GET"])
-# @require_auth()
 def get_forecasts_grouped():
-    forecasts = AIForecast.query.order_by(AIForecast.category).all()
+    forecasts = AIForecast.query.all()
 
-    grouped = {
+    t = {}
+    d7 = {}
+    d30 = {}
+
+    for f in forecasts:
+        if f.horizon == "tomorrow":
+            t[f.category] = f.predicted_quantity
+        elif f.horizon == "7_days":
+            d7[f.category] = f.predicted_quantity
+        elif f.horizon == "30_days":
+            d30[f.category] = f.predicted_quantity
+
+    all_categories = set(t) | set(d7) | set(d30)
+
+    result = {
         "tomorrow": [],
         "next_7_days": [],
         "next_30_days": []
     }
 
-    for f in forecasts:
-        data = {
-            "id": f.id,
-            "category": f.category,
-            "predicted_quantity": f.predicted_quantity,
-            "created_at": f.created_at.isoformat()
-        }
+    for cat in sorted(all_categories):
+        result["tomorrow"].append({
+            "category": cat,
+            "predicted_quantity": t.get(cat, 0)
+        })
+        result["next_7_days"].append({
+            "category": cat,
+            "predicted_quantity": d7.get(cat, 0)
+        })
+        result["next_30_days"].append({
+            "category": cat,
+            "predicted_quantity": d30.get(cat, 0)
+        })
 
-        if f.horizon == "tomorrow":
-            grouped["tomorrow"].append(data)
-        elif f.horizon == "7_days":
-            grouped["next_7_days"].append(data)
-        elif f.horizon == "30_days":
-            grouped["next_30_days"].append(data)
-
-    return jsonify(grouped), 200
-
+    return jsonify(result), 200
 
 @ml_bp.route("/forecast/<int:id>", methods=["PUT"])
 # @require_auth()
