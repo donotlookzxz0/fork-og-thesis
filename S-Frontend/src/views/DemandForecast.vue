@@ -179,7 +179,14 @@ const chartData = computed(() => {
 
 const renderChart = () => {
   if (!canvas.value || !chartData.value.length) return;
-  if (chart) chart.destroy();
+
+  if (chart) {
+    chart.destroy();
+    chart = null;
+  }
+
+  const ctx = canvas.value.getContext("2d");
+  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
 
   const sorted = [...chartData.value].sort(
     (a, b) => b.predicted_quantity - a.predicted_quantity
