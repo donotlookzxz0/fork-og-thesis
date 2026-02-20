@@ -64,11 +64,13 @@
 }
 
 .chart-card {
-  height: 360px;
+  min-height: 360px;
 }
 
 .chart-wrapper {
-  height: 260px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .badge {
