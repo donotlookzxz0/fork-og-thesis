@@ -26,19 +26,42 @@ const horizon = ref("30");
 const canvas = ref(null);
 let chart = null;
 
-// 🔄 LOAD FORECAST
+const categoryColors = {
+  Fruits: "#ff6b6b",
+  Vegetables: "#2ecc71",
+  Meat: "#c0392b",
+  Seafood: "#1abc9c",
+  Dairy: "#f1c40f",
+  Beverages: "#3498db",
+  Snacks: "#e67e22",
+  Bakery: "#d35400",
+  Frozen: "#9b59b6",
+  "Canned Goods": "#95a5a6",
+  Condiments: "#e84393",
+  "Dry Goods": "#7f8c8d",
+  "Grains & Pasta": "#27ae60",
+  "Spices & Seasonings": "#8e44ad",
+  "Breakfast & Cereal": "#f39c12",
+  "Personal Care": "#fd79a8",
+  Household: "#636e72",
+  "Baby Products": "#fab1a0",
+  "Pet Supplies": "#00cec9",
+  "Health & Wellness": "#55efc4",
+  "Cleaning Supplies": "#0984e3"
+};
+
 const loadForecast = async () => {
   try {
     const res = await api.get("/ml/forecast");
     forecast.value = res.data;
-// ✅ Merge all horizons so categories never get skipped
-const allCategories = [
-  ...forecast.value.tomorrow,
-  ...forecast.value.next_7_days,
-  ...forecast.value.next_30_days,
-].map(c => c.category);
 
-categories.value = [...new Set(allCategories)];
+    const allCategories = [
+      ...forecast.value.tomorrow,
+      ...forecast.value.next_7_days,
+      ...forecast.value.next_30_days,
+    ].map(c => c.category);
+
+    categories.value = [...new Set(allCategories)];
     await nextTick();
     renderChart();
 
@@ -53,7 +76,6 @@ categories.value = [...new Set(allCategories)];
   }
 };
 
-// 🤖 RUN AI
 const runAllModels = async () => {
   try {
     loading.value = true;
@@ -68,7 +90,6 @@ const runAllModels = async () => {
   }
 };
 
-// 📊 COMPUTE DEMAND
 const computeDemand = () => {
   if (!forecast.value || !selectedCategory.value) return;
 
@@ -89,14 +110,12 @@ const computeDemand = () => {
   };
 };
 
-// 🔥 DEMAND LEVEL
 const demandLevel = computed(() => {
   if (demand.value.next30 > 15) return "High";
   if (demand.value.next30 >= 5) return "Medium";
   return "Low";
 });
 
-// 💡 SUGGESTIONS
 const suggestions = computed(() => {
   if (!selectedCategory.value) return [];
 
@@ -118,48 +137,57 @@ const suggestions = computed(() => {
   ];
 });
 
-// ⭐ TOP DEMAND
 const topDemand = computed(() => {
   if (!forecast.value) return [];
 
-  return forecast.value.next_30_days
-    .map((c) => {
-      const t = forecast.value.tomorrow.find((x) => x.category === c.category);
-      const d7 = forecast.value.next_7_days.find(
-        (x) => x.category === c.category
-      );
+  return categories.value
+    .map((cat) => {
+      const t = forecast.value.tomorrow.find(x => x.category === cat);
+      const d7 = forecast.value.next_7_days.find(x => x.category === cat);
+      const d30 = forecast.value.next_30_days.find(x => x.category === cat);
 
       return {
-        category: c.category,
+        category: cat,
         tomorrow: t?.predicted_quantity ?? 0,
         next7: d7?.predicted_quantity ?? 0,
-        next30: c.predicted_quantity,
+        next30: d30?.predicted_quantity ?? 0,
       };
     })
-    .sort((a, b) => b.next30 - a.next30)
-    .slice(0, 5);
+    .sort((a,b) => b.next30 - a.next30)
+    .slice(0,5);
 });
 
-// 📈 CHART DATA
 const chartData = computed(() => {
   if (!forecast.value) return [];
-  if (horizon.value === "1") return forecast.value.tomorrow;
-  if (horizon.value === "7") return forecast.value.next_7_days;
-  return forecast.value.next_30_days;
+
+  return categories.value.map(cat => {
+    const source =
+      horizon.value === "1"
+        ? forecast.value.tomorrow
+        : horizon.value === "7"
+        ? forecast.value.next_7_days
+        : forecast.value.next_30_days;
+
+    const found = source.find(x => x.category === cat);
+
+    return {
+      category: cat,
+      predicted_quantity: found?.predicted_quantity ?? 0,
+    };
+  });
 });
 
-// 🟢 NEW PRO HORIZONTAL BAR CHART
 const renderChart = () => {
   if (!canvas.value || !chartData.value.length) return;
   if (chart) chart.destroy();
 
-  // 🔥 Sort like football table
   const sorted = [...chartData.value].sort(
     (a, b) => b.predicted_quantity - a.predicted_quantity
   );
 
   const labels = sorted.map((c) => c.category);
   const values = sorted.map((c) => c.predicted_quantity);
+  const colors = labels.map(cat => categoryColors[cat] || "#888");
 
   chart = new Chart(canvas.value, {
     type: "bar",
@@ -170,24 +198,12 @@ const renderChart = () => {
           data: values,
           borderRadius: 6,
           barThickness: 18,
-          backgroundColor: [
-            "#3498db",
-            "#9b59b6",
-            "#1abc9c",
-            "#f1c40f",
-            "#e67e22",
-            "#e74c3c",
-            "#2ecc71",
-            "#95a5a6",
-            "#16a085",
-            "#8e44ad",
-            "#2980b9",
-          ],
+          backgroundColor: colors,
         },
       ],
     },
     options: {
-      indexAxis: "y", // ← makes it horizontal
+      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -219,12 +235,10 @@ onMounted(loadForecast);
 
 <template>
   <div class="page">
-    <!-- 🔔 TOAST -->
     <Toast position="top-center" />
 
     <h1 class="title"><i class="pi pi-chart-pie"></i> Demand Forecast</h1>
 
-    <!-- CONTROLS -->
     <div class="controls">
       <select v-model="selectedCategory">
         <option value="">-- Select Category --</option>
@@ -233,12 +247,10 @@ onMounted(loadForecast);
         </option>
       </select>
 
-      <!-- 🔄 REFRESH -->
       <button class="btn secondary" @click="loadForecast" :disabled="loading">
         <i class="pi pi-refresh"></i> Refresh
       </button>
 
-      <!-- 🤖 RUN AI -->
       <button class="btn primary" @click="runAllModels" :disabled="loading">
         <i class="pi pi-cog"></i>
         {{ loading ? "Running AI..." : "Run AI Forecast" }}
@@ -247,9 +259,7 @@ onMounted(loadForecast);
       <span v-if="lastRun" class="timestamp"> Last run: {{ lastRun }} </span>
     </div>
 
-    <!-- LAYOUT -->
     <div class="layout">
-      <!-- LEFT -->
       <div class="left">
         <div v-if="selectedCategory" class="card">
           <h2>
@@ -302,7 +312,6 @@ onMounted(loadForecast);
         </div>
       </div>
 
-      <!-- RIGHT -->
       <div class="right">
         <div class="card chart-card">
           <div class="chart-header">
@@ -321,7 +330,6 @@ onMounted(loadForecast);
       </div>
     </div>
 
-    <!-- ⏳ LOADER OVERLAY -->
     <div v-if="loading" class="loader-overlay">
       <div class="loader-box">
         <i class="pi pi-spin pi-spinner"></i>
@@ -330,4 +338,3 @@ onMounted(loadForecast);
     </div>
   </div>
 </template>
-
