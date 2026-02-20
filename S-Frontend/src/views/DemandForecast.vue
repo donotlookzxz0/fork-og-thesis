@@ -1,7 +1,6 @@
 <script setup>
-import { ref, onMounted, watch, computed, nextTick } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import api from "../services/api";
-import { Chart } from "chart.js/auto";
 
 import "../assets/DemandForecast.css";
 import Toast from "primevue/toast";
@@ -21,10 +20,7 @@ const demand = ref({
 
 const lastRun = ref(null);
 const loading = ref(false);
-
 const horizon = ref("30");
-const canvas = ref(null);
-let chart = null;
 
 const categoryColors = {
   Fruits: "#ff6b6b",
@@ -158,86 +154,26 @@ const topDemand = computed(() => {
 const chartData = computed(() => {
   if (!forecast.value) return [];
 
-  return categories.value.map(cat => {
-    const source =
-      horizon.value === "1"
-        ? forecast.value.tomorrow
-        : horizon.value === "7"
-        ? forecast.value.next_7_days
-        : forecast.value.next_30_days;
+  const source =
+    horizon.value === "1"
+      ? forecast.value.tomorrow
+      : horizon.value === "7"
+      ? forecast.value.next_7_days
+      : forecast.value.next_30_days;
 
-    const found = source.find(x => x.category === cat);
-
-    return {
-      category: cat,
-      predicted_quantity: found?.predicted_quantity ?? 0,
-    };
-  });
+  return categories.value
+    .map(cat => {
+      const found = source.find(x => x.category === cat);
+      return {
+        category: cat,
+        value: found?.predicted_quantity ?? 0,
+        color: categoryColors[cat] || "#888"
+      };
+    })
+    .sort((a,b) => b.value - a.value);
 });
 
-const renderChart = () => {
-  if (!canvas.value || !chartData.value.length) return;
-
-  if (chart) {
-    chart.destroy();
-    chart = null;
-  }
-
-  const sorted = [...chartData.value].sort(
-    (a, b) => b.predicted_quantity - a.predicted_quantity
-  );
-
-  const labels = sorted.map((c) => c.category);
-  const values = sorted.map((c) => c.predicted_quantity);
-  const colors = labels.map(cat => categoryColors[cat] || "#888");
-
-  chart = new Chart(canvas.value, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          data: values,
-          borderRadius: 6,
-          barThickness: 18,
-          backgroundColor: colors,
-        },
-      ],
-    },
-    options: {
-      animation: false,
-      responsive: true,
-      resizeDelay: 200,
-      maintainAspectRatio: false,
-      devicePixelRatio: 1,
-      indexAxis: "y",
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.label}: ${ctx.raw} pcs`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: "rgba(255,255,255,0.05)" },
-          ticks: { color: "#aaa" },
-        },
-        y: {
-          grid: { display: false },
-          ticks: { color: "#ccc" },
-        },
-      },
-    },
-  });
-};
-
 watch(selectedCategory, computeDemand);
-
-watch([chartData, horizon], () => {
-  nextTick(() => renderChart());
-}, { deep: true });
 
 onMounted(loadForecast);
 </script>
@@ -333,8 +269,24 @@ onMounted(loadForecast);
           </div>
 
           <div class="chart-wrapper">
-            <canvas ref="canvas"></canvas>
+            <div v-for="row in chartData" :key="row.category" style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#ccc;margin-bottom:4px;">
+                <span>{{ row.category }}</span>
+                <span>{{ row.value }} pcs</span>
+              </div>
+              <div style="background:#2a2a2a;height:14px;border-radius:6px;overflow:hidden;">
+                <div
+                  :style="{
+                    width: (row.value / (chartData[0]?.value || 1) * 100) + '%',
+                    background: row.color,
+                    height:'100%',
+                    borderRadius:'6px'
+                  }"
+                ></div>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
