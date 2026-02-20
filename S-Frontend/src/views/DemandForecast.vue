@@ -22,11 +22,11 @@ const demand = ref({
 const lastRun = ref(null);
 const loading = ref(false);
 
-const horizon = ref("30"); // 1 | 7 | 30
+const horizon = ref("30");
 const canvas = ref(null);
 let chart = null;
 
-// 🔄 LOAD FORECAST (REFRESH)
+// 🔄 LOAD FORECAST
 const loadForecast = async () => {
   try {
     const res = await api.get("/ml/forecast");
@@ -44,47 +44,19 @@ const loadForecast = async () => {
     });
   } catch (err) {
     console.error("Load forecast failed:", err);
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail: "Failed to load forecast data",
-      life: 3000,
-    });
   }
 };
 
-// 🤖 RUN ALL MODELS
+// 🤖 RUN AI
 const runAllModels = async () => {
   try {
     loading.value = true;
-
-    toast.add({
-      severity: "info",
-      summary: "Running Model",
-      detail: "AI forecast is processing...",
-      life: 2000,
-    });
-
     await api.post("/ml/forecast");
-
     lastRun.value = new Date().toLocaleString();
     await loadForecast();
     computeDemand();
-
-    toast.add({
-      severity: "success",
-      summary: "Completed",
-      detail: "Forecast updated successfully",
-      life: 3000,
-    });
   } catch (err) {
     console.error("AI run failed:", err);
-    toast.add({
-      severity: "error",
-      summary: "AI Error",
-      detail: "Failed to run forecasting model",
-      life: 3000,
-    });
   } finally {
     loading.value = false;
   }
@@ -95,13 +67,13 @@ const computeDemand = () => {
   if (!forecast.value || !selectedCategory.value) return;
 
   const t = forecast.value.tomorrow.find(
-    (f) => f.category === selectedCategory.value,
+    (f) => f.category === selectedCategory.value
   );
   const d7 = forecast.value.next_7_days.find(
-    (f) => f.category === selectedCategory.value,
+    (f) => f.category === selectedCategory.value
   );
   const d30 = forecast.value.next_30_days.find(
-    (f) => f.category === selectedCategory.value,
+    (f) => f.category === selectedCategory.value
   );
 
   demand.value = {
@@ -121,6 +93,7 @@ const demandLevel = computed(() => {
 // 💡 SUGGESTIONS
 const suggestions = computed(() => {
   if (!selectedCategory.value) return [];
+
   if (demandLevel.value === "High") {
     return [
       "Prepare restock within 7 days",
@@ -128,9 +101,11 @@ const suggestions = computed(() => {
       "Monitor inventory daily",
     ];
   }
+
   if (demandLevel.value === "Medium") {
     return ["Monitor weekly sales trend", "Plan replenishment if needed"];
   }
+
   return [
     "No immediate restocking required",
     "Consider promotional strategies",
@@ -145,7 +120,7 @@ const topDemand = computed(() => {
     .map((c) => {
       const t = forecast.value.tomorrow.find((x) => x.category === c.category);
       const d7 = forecast.value.next_7_days.find(
-        (x) => x.category === c.category,
+        (x) => x.category === c.category
       );
 
       return {
@@ -167,22 +142,28 @@ const chartData = computed(() => {
   return forecast.value.next_30_days;
 });
 
-// 🥧 RENDER CHART
+// 🟢 NEW PRO HORIZONTAL BAR CHART
 const renderChart = () => {
   if (!canvas.value || !chartData.value.length) return;
   if (chart) chart.destroy();
 
-  const labels = chartData.value.map((c) => c.category);
-  const values = chartData.value.map((c) => c.predicted_quantity);
-  const total = values.reduce((a, b) => a + b, 0);
+  // 🔥 Sort like football table
+  const sorted = [...chartData.value].sort(
+    (a, b) => b.predicted_quantity - a.predicted_quantity
+  );
+
+  const labels = sorted.map((c) => c.category);
+  const values = sorted.map((c) => c.predicted_quantity);
 
   chart = new Chart(canvas.value, {
-    type: "doughnut",
+    type: "bar",
     data: {
       labels,
       datasets: [
         {
           data: values,
+          borderRadius: 6,
+          barThickness: 18,
           backgroundColor: [
             "#3498db",
             "#9b59b6",
@@ -200,21 +181,25 @@ const renderChart = () => {
       ],
     },
     options: {
+      indexAxis: "y", // ← makes it horizontal
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: "bottom",
-          labels: { color: "#ccc", boxWidth: 12 },
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => {
-              const value = ctx.raw;
-              const pct = total ? ((value / total) * 100).toFixed(1) : 0;
-              return `${ctx.label}: ${value} (${pct}%)`;
-            },
+            label: (ctx) => `${ctx.label}: ${ctx.raw} pcs`,
           },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.05)" },
+          ticks: { color: "#aaa" },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: "#ccc" },
         },
       },
     },
