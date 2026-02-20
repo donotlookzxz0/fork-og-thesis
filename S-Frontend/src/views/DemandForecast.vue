@@ -3,7 +3,7 @@ import { ref, onMounted, watch, computed, nextTick } from "vue";
 import api from "../services/api";
 import { Chart } from "chart.js/auto";
 
-import "@/assets/DemandForecast.css";
+import "../assets/DemandForecast.css";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 
