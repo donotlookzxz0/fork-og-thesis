@@ -1,11 +1,3 @@
-# ml/time_series_forecast.py
-# STABLE + CATEGORY-WISE TIME-SERIES DEMAND FORECAST
-# Improvements:
-# - Train per category (no averaging issue)
-# - Smaller LSTM for small POS datasets
-# - Uses newest data for prediction
-# - Stable deterministic training
-
 import pandas as pd
 import numpy as np
 import torch
@@ -21,9 +13,6 @@ from models.sales_transaction_item import SalesTransactionItem
 from models.item import Item
 
 
-# ===============================
-# 0️⃣ FIX RANDOMNESS
-# ===============================
 SEED = 42
 torch.manual_seed(SEED)
 np.random.seed(SEED)
@@ -32,9 +21,6 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-# ===============================
-# DATASET CLASS
-# ===============================
 class TSDataset(Dataset):
     def __init__(self, data, seq_len):
         self.X, self.y = [], []
@@ -53,13 +39,9 @@ class TSDataset(Dataset):
         )
 
 
-# ===============================
-# MODEL
-# ===============================
 class LSTM(nn.Module):
     def __init__(self, features):
         super().__init__()
-        # 🔥 smaller network = more stable with small data
         self.lstm = nn.LSTM(features, 16, batch_first=True)
         self.fc = nn.Linear(16, features)
 
@@ -68,15 +50,9 @@ class LSTM(nn.Module):
         return self.fc(out[:, -1])
 
 
-# ===============================
-# MAIN FORECAST FUNCTION
-# ===============================
 def run_time_series_forecast():
     print("\n[ML] Stable category-wise demand prediction started")
 
-    # ===============================
-    # 1️⃣ LOAD DATA
-    # ===============================
     rows = (
         db.session.query(
             SalesTransaction.date.label("date"),
@@ -102,9 +78,6 @@ def run_time_series_forecast():
     df = pd.DataFrame(rows, columns=["date", "category", "quantity"])
     df["date"] = pd.to_datetime(df["date"]).dt.date
 
-    # ===============================
-    # 2️⃣ DAILY CATEGORY SERIES
-    # ===============================
     daily = (
         df.groupby(["date", "category"])["quantity"]
         .sum()
@@ -122,26 +95,18 @@ def run_time_series_forecast():
         "next_30_days": {}
     }
 
-    # ===============================
-    # 3️⃣ TRAIN PER CATEGORY
-    # ===============================
     for category in daily.columns:
-
         print(f"[ML] Training category: {category}")
 
-        series = daily[[category]].values  # shape (days,1)
-
-        # log transform
+        series = daily[[category]].values
         values = np.log1p(series)
 
-        # train split
         split = int(len(values) * 0.8)
         train_data = values[:split]
 
         scaler = MinMaxScaler()
         train_scaled = scaler.fit_transform(train_data)
 
-        # 🔥 shorter window works better for POS data
         SEQ_LEN = min(14, len(train_scaled) - 1)
 
         if SEQ_LEN <= 2:
@@ -151,16 +116,10 @@ def run_time_series_forecast():
         train_ds = TSDataset(train_scaled, SEQ_LEN)
         train_loader = DataLoader(train_ds, batch_size=8, shuffle=False)
 
-        # ===============================
-        # MODEL INIT
-        # ===============================
         model = LSTM(1)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         loss_fn = nn.MSELoss()
 
-        # ===============================
-        # TRAIN
-        # ===============================
         for epoch in range(40):
             total_loss = 0.0
             for xb, yb in train_loader:
@@ -170,9 +129,6 @@ def run_time_series_forecast():
                 optimizer.step()
                 total_loss += loss.item()
 
-        # ===============================
-        # 4️⃣ PREDICT USING FULL DATA
-        # ===============================
         full_scaled = scaler.transform(values)
 
         def predict(days):
