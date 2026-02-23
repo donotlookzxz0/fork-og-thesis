@@ -96,7 +96,6 @@ def run_time_series_forecast():
         "next_30_days": {}
     }
 
-    # ⭐ ONLY ADDITION
     metrics = {}
 
     for category in daily.columns:
@@ -125,52 +124,97 @@ def run_time_series_forecast():
         loss_fn = nn.MSELoss()
 
         for epoch in range(40):
-            total_loss = 0.0
             for xb, yb in train_loader:
                 optimizer.zero_grad()
                 loss = loss_fn(model(xb), yb)
                 loss.backward()
                 optimizer.step()
-                total_loss += loss.item()
 
         full_scaled = scaler.transform(values)
 
-        # ⭐ METRICS (NO CHANGE TO PREDICTION)
-        preds_eval = []
-        actual_eval = []
+       
 
-        model.eval()
-        eval_ds = TSDataset(full_scaled, SEQ_LEN)
+        def evaluate_horizon(days):
+            preds_all = []
+            actual_all = []
 
-        with torch.no_grad():
-            for i in range(len(eval_ds)):
-                x, y = eval_ds[i]
-                out = model(x.unsqueeze(0))
-                preds_eval.append(out.numpy()[0])
-                actual_eval.append(y.numpy())
+            model.eval()
 
-        preds_eval = scaler.inverse_transform(np.array(preds_eval))
-        actual_eval = scaler.inverse_transform(np.array(actual_eval))
+            # how many future days actually exist
+            max_future = len(full_scaled) - SEQ_LEN
+            effective_days = min(days, max_future)
 
-        preds_eval = np.expm1(preds_eval)
-        actual_eval = np.expm1(actual_eval)
+            if effective_days <= 0:
+                return {
+                    "mae": None,
+                    "rmse": None,
+                    "mape": None
+                }
 
-        mae = mean_absolute_error(actual_eval, preds_eval)
-        rmse = np.sqrt(mean_squared_error(actual_eval, preds_eval))
+            for i in range(len(full_scaled) - SEQ_LEN - effective_days + 1):
 
-        mask = actual_eval != 0
-        mape = (
-            np.mean(np.abs((actual_eval[mask] - preds_eval[mask]) / actual_eval[mask])) * 100
-            if np.any(mask) else 0.0
-        )
+                seq = torch.tensor(
+                    full_scaled[i:i + SEQ_LEN],
+                    dtype=torch.float32
+                ).unsqueeze(0)
+
+                preds = []
+
+                for _ in range(effective_days):
+                    with torch.no_grad():
+                        next_step = model(seq)
+
+                    preds.append(next_step.numpy()[0])
+                    seq = torch.cat(
+                        [seq[:, 1:, :], next_step.unsqueeze(1)],
+                        dim=1
+                    )
+
+                actual = full_scaled[i + SEQ_LEN:i + SEQ_LEN + effective_days]
+
+                preds_all.append(preds)
+                actual_all.append(actual)
+
+            if not preds_all:
+                return {
+                    "mae": None,
+                    "rmse": None,
+                    "mape": None
+                }
+
+            preds_all = scaler.inverse_transform(
+                np.vstack(preds_all).reshape(-1, 1)
+            )
+            actual_all = scaler.inverse_transform(
+                np.vstack(actual_all).reshape(-1, 1)
+            )
+
+            preds_all = np.expm1(preds_all)
+            actual_all = np.expm1(actual_all)
+
+            mae = mean_absolute_error(actual_all, preds_all)
+            rmse = np.sqrt(mean_squared_error(actual_all, preds_all))
+
+            mask = actual_all != 0
+            mape = (
+                np.mean(np.abs((actual_all[mask] - preds_all[mask]) / actual_all[mask])) * 100
+                if np.any(mask) else 0.0
+            )
+
+            return {
+                "mae": float(mae),
+                "rmse": float(rmse),
+                "mape": float(mape)
+            }
 
         metrics[category] = {
-            "mae": float(mae),
-            "rmse": float(rmse),
-            "mape": float(mape)
+            "tomorrow": evaluate_horizon(1),
+            "next_7_days": evaluate_horizon(7),
+            "next_30_days": evaluate_horizon(30)
         }
 
-        # ⭐ ORIGINAL PREDICTION BLOCK (UNCHANGED)
+       
+
         def predict(days):
             model.eval()
 
