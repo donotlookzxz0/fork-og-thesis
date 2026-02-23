@@ -5,6 +5,7 @@ import torch.nn as nn
 import random
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from torch.utils.data import Dataset, DataLoader
 
 from db import db
@@ -85,11 +86,17 @@ def run_time_series_forecast():
         .sort_index()
     )
 
-    if len(daily) < 14:
+    if len(daily) < 30:
         print("[ML] Not enough data")
         return None
 
     results = {
+        "tomorrow": {},
+        "next_7_days": {},
+        "next_30_days": {}
+    }
+
+    metrics = {
         "tomorrow": {},
         "next_7_days": {},
         "next_30_days": {}
@@ -101,53 +108,101 @@ def run_time_series_forecast():
         series = daily[[category]].values
         values = np.log1p(series)
 
-        split = int(len(values) * 0.8)
-        train_data = values[:split]
-
         scaler = MinMaxScaler()
-        train_scaled = scaler.fit_transform(train_data)
+        scaled = scaler.fit_transform(values)
 
-        SEQ_LEN = min(14, len(train_scaled) - 1)
+        SEQ_LEN = min(14, len(scaled) - 31)
 
         if SEQ_LEN <= 2:
-            print(f"[ML] Skipping {category} (not enough sequence data)")
             continue
 
-        train_ds = TSDataset(train_scaled, SEQ_LEN)
-        train_loader = DataLoader(train_ds, batch_size=8, shuffle=False)
+        ds = TSDataset(scaled, SEQ_LEN)
+        loader = DataLoader(ds, batch_size=8, shuffle=False)
 
         model = LSTM(1)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         loss_fn = nn.MSELoss()
 
         for epoch in range(40):
-            total_loss = 0.0
-            for xb, yb in train_loader:
+            for xb, yb in loader:
                 optimizer.zero_grad()
                 loss = loss_fn(model(xb), yb)
                 loss.backward()
                 optimizer.step()
-                total_loss += loss.item()
 
-        full_scaled = scaler.transform(values)
+        model.eval()
+
+        preds_1, actual_1 = [], []
+        preds_7, actual_7 = [], []
+        preds_30, actual_30 = [], []
+
+        for i in range(len(scaled) - SEQ_LEN - 30):
+            seq = torch.tensor(
+                scaled[i:i+SEQ_LEN], dtype=torch.float32
+            ).unsqueeze(0)
+
+            future = []
+            with torch.no_grad():
+                temp = seq.clone()
+                for _ in range(30):
+                    out = model(temp)
+                    future.append(out.numpy()[0])
+                    temp = torch.cat(
+                        [temp[:, 1:, :], out.unsqueeze(1)],
+                        dim=1
+                    )
+
+            future = scaler.inverse_transform(np.array(future))
+            future = np.expm1(future)
+
+            real = scaler.inverse_transform(
+                scaled[i+SEQ_LEN:i+SEQ_LEN+30]
+            )
+            real = np.expm1(real)
+
+            preds_1.append(future[0][0])
+            actual_1.append(real[0][0])
+
+            preds_7.append(np.sum(future[:7]))
+            actual_7.append(np.sum(real[:7]))
+
+            preds_30.append(np.sum(future[:30]))
+            actual_30.append(np.sum(real[:30]))
+
+        def calc_metrics(a, p):
+            a = np.array(a)
+            p = np.array(p)
+            mae = mean_absolute_error(a, p)
+            rmse = np.sqrt(mean_squared_error(a, p))
+            mask = a != 0
+            mape = (
+                np.mean(np.abs((a[mask] - p[mask]) / a[mask])) * 100
+                if np.any(mask) else 0.0
+            )
+            return {
+                "mae": float(mae),
+                "rmse": float(rmse),
+                "mape": float(mape)
+            }
+
+        metrics["tomorrow"][category] = calc_metrics(actual_1, preds_1)
+        metrics["next_7_days"][category] = calc_metrics(actual_7, preds_7)
+        metrics["next_30_days"][category] = calc_metrics(actual_30, preds_30)
 
         def predict(days):
-            model.eval()
-
             seq = torch.tensor(
-                full_scaled[-SEQ_LEN:], dtype=torch.float32
+                scaled[-SEQ_LEN:], dtype=torch.float32
             ).unsqueeze(0)
 
             preds = []
 
             for _ in range(days):
                 with torch.no_grad():
-                    next_step = model(seq)
+                    nxt = model(seq)
 
-                preds.append(next_step.numpy()[0])
-
+                preds.append(nxt.numpy()[0])
                 seq = torch.cat(
-                    [seq[:, 1:, :], next_step.unsqueeze(1)],
+                    [seq[:, 1:, :], nxt.unsqueeze(1)],
                     dim=1
                 )
 
@@ -155,12 +210,11 @@ def run_time_series_forecast():
             preds = np.expm1(preds)
             return np.clip(preds, 0, None)
 
-        pred_1 = predict(1)[0][0]
-        pred_7 = predict(7)[:, 0]
-        pred_30 = predict(30)[:, 0]
+        results["tomorrow"][category] = int(round(predict(1)[0][0]))
+        results["next_7_days"][category] = int(np.sum(predict(7)))
+        results["next_30_days"][category] = int(np.sum(predict(30)))
 
-        results["tomorrow"][category] = int(round(pred_1))
-        results["next_7_days"][category] = int(pred_7.sum())
-        results["next_30_days"][category] = int(pred_30.sum())
-
-    return results
+    return {
+        "results": results,
+        "metrics": metrics
+    }

@@ -3,6 +3,7 @@ from routes.sales import sales_bp
 from routes.users import user_routes
 from routes.payment import payment_bp
 from routes.ml import ml_bp
+from routes.metrics import metrics_bp
 from routes.recommendation import recommendations_bp
 from routes.cash_payment import cash_payment_bp
 from routes.admin_cash_payment import admin_cash_bp
@@ -15,6 +16,7 @@ __all__ = [
     "user_routes",
     "payment_bp",
     "ml_bp",
+    "metrics_bp",
     "recommendations_bp",
     "cash_payment_bp",
     "admin_cash_bp",
