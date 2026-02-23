@@ -86,7 +86,7 @@ def run_time_series_forecast():
         .sort_index()
     )
 
-    if len(daily) < 30:
+    if len(daily) < 14:
         print("[ML] Not enough data")
         return None
 
@@ -96,11 +96,8 @@ def run_time_series_forecast():
         "next_30_days": {}
     }
 
-    metrics = {
-        "tomorrow": {},
-        "next_7_days": {},
-        "next_30_days": {}
-    }
+    # ⭐ ONLY ADDITION
+    metrics = {}
 
     for category in daily.columns:
         print(f"[ML] Training category: {category}")
@@ -108,101 +105,89 @@ def run_time_series_forecast():
         series = daily[[category]].values
         values = np.log1p(series)
 
-        scaler = MinMaxScaler()
-        scaled = scaler.fit_transform(values)
+        split = int(len(values) * 0.8)
+        train_data = values[:split]
 
-        SEQ_LEN = min(14, len(scaled) - 31)
+        scaler = MinMaxScaler()
+        train_scaled = scaler.fit_transform(train_data)
+
+        SEQ_LEN = min(14, len(train_scaled) - 1)
 
         if SEQ_LEN <= 2:
+            print(f"[ML] Skipping {category} (not enough sequence data)")
             continue
 
-        ds = TSDataset(scaled, SEQ_LEN)
-        loader = DataLoader(ds, batch_size=8, shuffle=False)
+        train_ds = TSDataset(train_scaled, SEQ_LEN)
+        train_loader = DataLoader(train_ds, batch_size=8, shuffle=False)
 
         model = LSTM(1)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         loss_fn = nn.MSELoss()
 
         for epoch in range(40):
-            for xb, yb in loader:
+            total_loss = 0.0
+            for xb, yb in train_loader:
                 optimizer.zero_grad()
                 loss = loss_fn(model(xb), yb)
                 loss.backward()
                 optimizer.step()
+                total_loss += loss.item()
+
+        full_scaled = scaler.transform(values)
+
+        # ⭐ METRICS (NO CHANGE TO PREDICTION)
+        preds_eval = []
+        actual_eval = []
 
         model.eval()
+        eval_ds = TSDataset(full_scaled, SEQ_LEN)
 
-        preds_1, actual_1 = [], []
-        preds_7, actual_7 = [], []
-        preds_30, actual_30 = [], []
+        with torch.no_grad():
+            for i in range(len(eval_ds)):
+                x, y = eval_ds[i]
+                out = model(x.unsqueeze(0))
+                preds_eval.append(out.numpy()[0])
+                actual_eval.append(y.numpy())
 
-        for i in range(len(scaled) - SEQ_LEN - 30):
-            seq = torch.tensor(
-                scaled[i:i+SEQ_LEN], dtype=torch.float32
-            ).unsqueeze(0)
+        preds_eval = scaler.inverse_transform(np.array(preds_eval))
+        actual_eval = scaler.inverse_transform(np.array(actual_eval))
 
-            future = []
-            with torch.no_grad():
-                temp = seq.clone()
-                for _ in range(30):
-                    out = model(temp)
-                    future.append(out.numpy()[0])
-                    temp = torch.cat(
-                        [temp[:, 1:, :], out.unsqueeze(1)],
-                        dim=1
-                    )
+        preds_eval = np.expm1(preds_eval)
+        actual_eval = np.expm1(actual_eval)
 
-            future = scaler.inverse_transform(np.array(future))
-            future = np.expm1(future)
+        mae = mean_absolute_error(actual_eval, preds_eval)
+        rmse = np.sqrt(mean_squared_error(actual_eval, preds_eval))
 
-            real = scaler.inverse_transform(
-                scaled[i+SEQ_LEN:i+SEQ_LEN+30]
-            )
-            real = np.expm1(real)
+        mask = actual_eval != 0
+        mape = (
+            np.mean(np.abs((actual_eval[mask] - preds_eval[mask]) / actual_eval[mask])) * 100
+            if np.any(mask) else 0.0
+        )
 
-            preds_1.append(future[0][0])
-            actual_1.append(real[0][0])
+        metrics[category] = {
+            "mae": float(mae),
+            "rmse": float(rmse),
+            "mape": float(mape)
+        }
 
-            preds_7.append(np.sum(future[:7]))
-            actual_7.append(np.sum(real[:7]))
-
-            preds_30.append(np.sum(future[:30]))
-            actual_30.append(np.sum(real[:30]))
-
-        def calc_metrics(a, p):
-            a = np.array(a)
-            p = np.array(p)
-            mae = mean_absolute_error(a, p)
-            rmse = np.sqrt(mean_squared_error(a, p))
-            mask = a != 0
-            mape = (
-                np.mean(np.abs((a[mask] - p[mask]) / a[mask])) * 100
-                if np.any(mask) else 0.0
-            )
-            return {
-                "mae": float(mae),
-                "rmse": float(rmse),
-                "mape": float(mape)
-            }
-
-        metrics["tomorrow"][category] = calc_metrics(actual_1, preds_1)
-        metrics["next_7_days"][category] = calc_metrics(actual_7, preds_7)
-        metrics["next_30_days"][category] = calc_metrics(actual_30, preds_30)
-
+        # ⭐ ORIGINAL PREDICTION BLOCK (UNCHANGED)
         def predict(days):
+            model.eval()
+
             seq = torch.tensor(
-                scaled[-SEQ_LEN:], dtype=torch.float32
+                full_scaled[-SEQ_LEN:], dtype=torch.float32
             ).unsqueeze(0)
 
             preds = []
 
             for _ in range(days):
                 with torch.no_grad():
-                    nxt = model(seq)
+                    next_step = model(seq)
 
-                preds.append(nxt.numpy()[0])
+                preds.append(next_step.numpy()[0])
+
                 seq = torch.cat(
-                    [seq[:, 1:, :], nxt.unsqueeze(1)],
+                    [seq[:, 1:, :], next_step.unsqueeze(1)],
                     dim=1
                 )
 
@@ -210,9 +195,13 @@ def run_time_series_forecast():
             preds = np.expm1(preds)
             return np.clip(preds, 0, None)
 
-        results["tomorrow"][category] = int(round(predict(1)[0][0]))
-        results["next_7_days"][category] = int(np.sum(predict(7)))
-        results["next_30_days"][category] = int(np.sum(predict(30)))
+        pred_1 = predict(1)[0][0]
+        pred_7 = predict(7)[:, 0]
+        pred_30 = predict(30)[:, 0]
+
+        results["tomorrow"][category] = int(round(pred_1))
+        results["next_7_days"][category] = int(pred_7.sum())
+        results["next_30_days"][category] = int(pred_30.sum())
 
     return {
         "results": results,

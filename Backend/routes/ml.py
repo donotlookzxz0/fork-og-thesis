@@ -27,9 +27,11 @@ ml_bp = Blueprint("ml_bp", __name__)
 # @require_auth()
 def create_forecast():
     try:
-        result = run_time_series_forecast()
-        if result is None:
+        data = run_time_series_forecast()
+        if data is None:
             return jsonify({"success": False, "message": "Not enough data"}), 400
+
+        result = data["results"]
 
         AIForecast.query.delete()
 
