@@ -11,34 +11,19 @@
       <template #content>
 
         <div class="grid mb-5 align-items-end">
-          <div class="col-12 md:col-3 flex flex-column gap-2">
+          <div class="col-12 md:col-4 flex flex-column gap-2">
             <label>Start Date</label>
-            <Calendar
-              v-model="startDate"
-              showIcon
-              class="w-full"
-              inputClass="w-full h-3rem"
-            />
+            <Calendar v-model="startDate" showIcon class="w-full" inputClass="w-full h-3rem" />
           </div>
 
-          <div class="col-12 md:col-3 flex flex-column gap-2">
+          <div class="col-12 md:col-4 flex flex-column gap-2">
             <label>End Date</label>
-            <Calendar
-              v-model="endDate"
-              showIcon
-              class="w-full"
-              inputClass="w-full h-3rem"
-            />
+            <Calendar v-model="endDate" showIcon class="w-full" inputClass="w-full h-3rem" />
           </div>
 
-          <div class="col-12 md:col-3 flex align-items-end">
-            <Button
-              label="Load Sales"
-              icon="pi pi-search"
-              class="w-full h-3rem"
-              :loading="loading"
-              @click="loadSales"
-            />
+          <div class="col-12 md:col-4 flex align-items-end">
+            <Button label="Load Sales" icon="pi pi-search" class="w-full h-3rem" :loading="loading"
+              @click="loadSales" />
           </div>
         </div>
 
@@ -77,14 +62,7 @@
           </div>
         </div>
 
-        <DataTable
-          :value="rows"
-          paginator
-          :rows="10"
-          stripedRows
-          responsiveLayout="scroll"
-          :loading="loading"
-        >
+        <DataTable :value="rows" paginator :rows="10" stripedRows responsiveLayout="scroll" :loading="loading">
           <Column field="date" header="Date" />
           <Column field="transaction_id" header="Transaction ID" />
           <Column field="items_count" header="Items" />
