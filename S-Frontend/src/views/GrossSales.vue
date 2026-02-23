@@ -5,7 +5,7 @@
 
     <Card>
       <template #title>
-        Gross Sales Overview
+        Total Gross Sales Overview
       </template>
 
       <template #content>
