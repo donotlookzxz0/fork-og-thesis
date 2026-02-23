@@ -10,15 +10,25 @@
 
       <template #content>
 
-        <div class="grid mb-5">
+        <div class="grid mb-5 align-items-end">
           <div class="col-12 md:col-3 flex flex-column gap-2">
             <label>Start Date</label>
-            <Calendar v-model="startDate" showIcon class="w-full" />
+            <Calendar
+              v-model="startDate"
+              showIcon
+              class="w-full"
+              inputClass="w-full h-3rem"
+            />
           </div>
 
           <div class="col-12 md:col-3 flex flex-column gap-2">
             <label>End Date</label>
-            <Calendar v-model="endDate" showIcon class="w-full" />
+            <Calendar
+              v-model="endDate"
+              showIcon
+              class="w-full"
+              inputClass="w-full h-3rem"
+            />
           </div>
 
           <div class="col-12 md:col-3 flex align-items-end">
