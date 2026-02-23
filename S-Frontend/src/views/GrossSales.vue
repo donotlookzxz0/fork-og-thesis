@@ -10,10 +10,9 @@
 
       <template #content>
 
-        <div class="flex flex-wrap gap-4 mb-5 align-items-end">
-
-          <div class="flex flex-column" style="min-width:220px;">
-            <label class="mb-2">Start Date</label>
+        <div class="grid mb-5 align-items-end">
+          <div class="col-12 md:col-3 flex flex-column gap-2">
+            <label>Start Date</label>
             <Calendar
               v-model="startDate"
               showIcon
@@ -22,8 +21,8 @@
             />
           </div>
 
-          <div class="flex flex-column" style="min-width:220px;">
-            <label class="mb-2">End Date</label>
+          <div class="col-12 md:col-3 flex flex-column gap-2">
+            <label>End Date</label>
             <Calendar
               v-model="endDate"
               showIcon
@@ -32,14 +31,15 @@
             />
           </div>
 
-          <Button
-            label="Load Sales"
-            icon="pi pi-search"
-            class="h-3rem px-4"
-            :loading="loading"
-            @click="loadSales"
-          />
-
+          <div class="col-12 md:col-3 flex align-items-end">
+            <Button
+              label="Load Sales"
+              icon="pi pi-search"
+              class="w-full h-3rem"
+              :loading="loading"
+              @click="loadSales"
+            />
+          </div>
         </div>
 
         <div class="grid mb-5">
