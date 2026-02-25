@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed } from "vue"
 import { useRouter } from "vue-router"
 import api from "../services/api"
 
@@ -7,6 +7,8 @@ const router = useRouter()
 
 const loading = ref(true)
 const rows = ref([])
+const selectedRange = ref("tomorrow") // ⭐ DEFAULT = TOMORROW
+
 const global = ref({
   avg_mae: 0,
   avg_rmse: 0,
@@ -22,11 +24,6 @@ const goBack = () => {
 const parseMetrics = (metrics) => {
   const list = []
 
-  let maeSum = 0
-  let rmseSum = 0
-  let mapeSum = 0
-  let count = 0
-
   Object.keys(metrics).forEach(category => {
     const ranges = metrics[category]
 
@@ -40,21 +37,33 @@ const parseMetrics = (metrics) => {
         rmse: Number(m.rmse),
         mape: Number(m.mape)
       })
-
-      maeSum += Number(m.mae)
-      rmseSum += Number(m.rmse)
-      mapeSum += Number(m.mape)
-      count++
     })
   })
 
-  // 🔥 Compute GLOBAL KPI values
+  return list
+}
+
+/* ---------------- FILTERED DATA ---------------- */
+const filteredRows = computed(() => {
+  const filtered = rows.value.filter(r => r.range === selectedRange.value)
+
+  let maeSum = 0
+  let rmseSum = 0
+  let mapeSum = 0
+  let count = filtered.length || 1
+
+  filtered.forEach(r => {
+    maeSum += r.mae
+    rmseSum += r.rmse
+    mapeSum += r.mape
+  })
+
   global.value.avg_mae = (maeSum / count).toFixed(2)
   global.value.avg_rmse = (rmseSum / count).toFixed(2)
   global.value.avg_mape = (mapeSum / count).toFixed(2)
 
-  return list
-}
+  return filtered
+})
 
 /* ---------------- LOAD DATA ---------------- */
 const load = async () => {
@@ -83,6 +92,17 @@ onMounted(load)
     </button>
 
     <h2 class="title">Demand Forecast AI Metrics</h2>
+
+    <!-- ⭐ RANGE SELECTOR -->
+    <div class="controls">
+      <label>Select Forecast Range:</label>
+
+      <select v-model="selectedRange">
+        <option value="tomorrow">Tomorrow</option>
+        <option value="next_7_days">Next 7 Days</option>
+        <option value="next_30_days">Next 30 Days</option>
+      </select>
+    </div>
 
     <div v-if="loading" class="loading">
       Loading model metrics...
@@ -116,7 +136,6 @@ onMounted(load)
           <thead>
             <tr>
               <th>Category</th>
-              <th>Range</th>
               <th>MAE</th>
               <th>RMSE</th>
               <th>MAPE</th>
@@ -124,9 +143,8 @@ onMounted(load)
           </thead>
 
           <tbody>
-            <tr v-for="r in rows" :key="r.category + r.range">
+            <tr v-for="r in filteredRows" :key="r.category + r.range">
               <td>{{ r.category }}</td>
-              <td>{{ r.range }}</td>
 
               <td>{{ r.mae.toFixed(2) }}</td>
               <td>{{ r.rmse.toFixed(2) }}</td>
@@ -150,8 +168,24 @@ onMounted(load)
 }
 
 .title {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-size: 1.8rem;
+}
+
+/* ⭐ CONTROLS */
+.controls {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+select {
+  background:#020617;
+  border:1px solid #1f2937;
+  color:#fff;
+  padding:6px 10px;
+  border-radius:6px;
 }
 
 /* 🔙 BACK BUTTON */
@@ -217,20 +251,9 @@ td {
   border-bottom: 1px solid #1f2937;
 }
 
-.good {
-  color: #22c55e;
-  font-weight: bold;
-}
-
-.warn {
-  color: #f59e0b;
-  font-weight: bold;
-}
-
-.bad {
-  color: #ef4444;
-  font-weight: bold;
-}
+.good { color: #22c55e; font-weight: bold; }
+.warn { color: #f59e0b; font-weight: bold; }
+.bad { color: #ef4444; font-weight: bold; }
 
 .loading {
   margin-top: 40px;
