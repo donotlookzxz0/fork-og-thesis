@@ -1,11 +1,19 @@
 <script setup>
 import { ref, onMounted } from "vue"
+import { useRouter } from "vue-router"
 import api from "../services/api"   // ✅ USE API.JS
+
+const router = useRouter()
 
 const loading = ref(true)
 
 const rows = ref([])
 const global = ref({})
+
+/* 🔙 GO BACK */
+const goBack = () => {
+  router.back()
+}
 
 /* ---------------- PARSE CATEGORY ---------------- */
 const parseCategory = (metrics) => {
@@ -40,6 +48,12 @@ onMounted(load)
 
 <template>
   <div class="metrics-page">
+
+    <!-- 🔙 GO BACK BUTTON -->
+    <button class="back-btn" @click="goBack">
+      ← Go Back
+    </button>
+
     <h2 class="title">Stockout Risk AI Metrics</h2>
 
     <div v-if="loading" class="loading">
@@ -116,6 +130,21 @@ onMounted(load)
 .title {
   margin-bottom: 20px;
   font-size: 1.8rem;
+}
+
+/* 🔙 BACK BUTTON */
+.back-btn {
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #1f2937;
+  color: #fff;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  background: #374151;
 }
 
 /* 🔥 KPI GRID */

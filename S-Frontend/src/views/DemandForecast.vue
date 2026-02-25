@@ -1,12 +1,14 @@
 <script setup>
 import { ref, onMounted, watch, computed } from "vue";
 import api from "../services/api";
+import { useRouter } from "vue-router";
 
 import "../assets/DemandForecast.css";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
 
 const toast = useToast();
+const router = useRouter();
 
 const categories = ref([]);
 const selectedCategory = ref("");
@@ -44,6 +46,10 @@ const categoryColors = {
   "Pet Supplies": "#00cec9",
   "Health & Wellness": "#55efc4",
   "Cleaning Supplies": "#0984e3"
+};
+
+const goToMetrics = () => {
+  router.push("/analytics/forecast-metrics");
 };
 
 const loadForecast = async () => {
@@ -199,6 +205,11 @@ onMounted(loadForecast);
       <button class="btn primary" @click="runAllModels" :disabled="loading">
         <i class="pi pi-cog"></i>
         {{ loading ? "Running AI..." : "Run AI Forecast" }}
+      </button>
+
+      <!-- NEW METRICS BUTTON -->
+      <button class="btn secondary" @click="goToMetrics">
+        <i class="pi pi-chart-line"></i> Metrics
       </button>
 
       <span v-if="lastRun" class="timestamp"> Last run: {{ lastRun }} </span>

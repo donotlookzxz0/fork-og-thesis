@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from "vue"
+import { useRouter } from "vue-router"
 import api from "../services/api"
 
 // 🔔 PrimeVue Toast
@@ -7,10 +8,16 @@ import Toast from "primevue/toast"
 import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
+const router = useRouter()
 
 const items = ref([])
 const loading = ref(false)
 const lastRun = ref(null)
+
+/* 📊 GO TO METRICS */
+const goToMetrics = () => {
+  router.push("/analytics/movement-metrics")
+}
 
 // 🔄 LOAD DATA (REFRESH)
 const load = async () => {
@@ -110,6 +117,11 @@ onMounted(load)
       <button class="btn primary" @click="run" :disabled="loading">
         <i class="pi pi-cog"></i>
         {{ loading ? "Running Model..." : "Run Model" }}
+      </button>
+
+      <!-- 📊 METRICS BUTTON -->
+      <button class="btn secondary" @click="goToMetrics">
+        <i class="pi pi-chart-line"></i> Metrics
       </button>
 
       <span v-if="lastRun" class="timestamp">
