@@ -1,106 +1,32 @@
-<template>
-  <div class="metrics-page">
-
-    <h2 class="title">AI Model Metrics Dashboard</h2>
-
-    <div v-if="loading" class="loading">
-      <ProgressSpinner />
-    </div>
-
-    <div v-else class="grid">
-
-      <!-- ================= FORECAST ================= -->
-      <Card>
-        <template #title>Demand Forecast Metrics</template>
-
-        <DataTable
-          :value="forecastRows"
-          responsiveLayout="scroll"
-          stripedRows
-        >
-          <Column field="category" header="Category" />
-          <Column field="range" header="Range" />
-          <Column field="mae" header="MAE" />
-          <Column field="rmse" header="RMSE" />
-          <Column field="mape" header="MAPE" />
-        </DataTable>
-      </Card>
-
-      <!-- ================= STOCKOUT GLOBAL ================= -->
-      <Card>
-        <template #title>Stockout Risk - Global Metrics</template>
-
-        <DataTable :value="stockoutGlobalRows">
-          <Column field="name" header="Metric" />
-          <Column field="value" header="Value" />
-        </DataTable>
-      </Card>
-
-      <!-- ================= MOVEMENT GLOBAL ================= -->
-      <Card>
-        <template #title>Item Movement - Global Metrics</template>
-
-        <DataTable :value="movementGlobalRows">
-          <Column field="name" header="Metric" />
-          <Column field="value" header="Value" />
-        </DataTable>
-      </Card>
-
-      <!-- ================= STOCKOUT CATEGORY ================= -->
-      <Card>
-        <template #title>Stockout Risk By Category</template>
-
-        <DataTable :value="stockoutRows" responsiveLayout="scroll">
-          <Column field="category" header="Category" />
-          <Column field="accuracy" header="Accuracy" />
-          <Column field="macro_f1" header="Macro F1" />
-          <Column field="risk_mae" header="Risk MAE" />
-          <Column field="total_items" header="Items" />
-        </DataTable>
-      </Card>
-
-      <!-- ================= MOVEMENT CATEGORY ================= -->
-      <Card>
-        <template #title>Item Movement By Category</template>
-
-        <DataTable :value="movementRows" responsiveLayout="scroll">
-          <Column field="category" header="Category" />
-          <Column field="accuracy" header="Accuracy" />
-          <Column field="macro_f1" header="Macro F1" />
-          <Column field="movement_mae" header="MAE" />
-          <Column field="total_items" header="Items" />
-        </DataTable>
-      </Card>
-
-    </div>
-
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted } from "vue"
 import api from "../services/api"
+import Toast from "primevue/toast"
+import { useToast } from "primevue/usetoast"
 
 import Card from "primevue/card"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
 import ProgressSpinner from "primevue/progressspinner"
 
+const toast = useToast()
+
 const loading = ref(true)
 
-/* ================= STATE ================= */
-
 const forecastRows = ref([])
-
 const stockoutRows = ref([])
-const stockoutGlobalRows = ref([])
-
+const stockoutGlobal = ref([])
 const movementRows = ref([])
-const movementGlobalRows = ref([])
+const movementGlobal = ref([])
 
-/* ================= HELPERS ================= */
+/* ---------------- API CALLS (LIKE INVENTORY PAGE) ---------------- */
 
-// 🔥 FLATTEN FORECAST STRUCTURE
+const getForecast = () => api.get("/metrics/forecast")
+const getStockout = () => api.get("/metrics/stockout-risk")
+const getMovement = () => api.get("/metrics/item-movement")
+
+/* ---------------- PARSERS ---------------- */
+
 const parseForecast = (metrics) => {
   const rows = []
 
@@ -113,8 +39,8 @@ const parseForecast = (metrics) => {
       rows.push({
         category,
         range,
-        mae: Number(m.mae).toFixed(3),
-        rmse: Number(m.rmse).toFixed(3),
+        mae: Number(m.mae).toFixed(2),
+        rmse: Number(m.rmse).toFixed(2),
         mape: Number(m.mape).toFixed(2) + "%"
       })
     })
@@ -123,67 +49,64 @@ const parseForecast = (metrics) => {
   return rows
 }
 
-const objToRows = (obj) => {
-  return Object.keys(obj).map(k => ({
+const objToRows = (obj) =>
+  Object.keys(obj).map(k => ({
     name: k,
     value: typeof obj[k] === "object"
       ? JSON.stringify(obj[k])
       : obj[k]
   }))
-}
 
-const parseCategoryMetrics = (metrics, maeKey) => {
-  return Object.keys(metrics).map(category => ({
-    category,
-    accuracy: metrics[category].accuracy,
-    macro_f1: metrics[category].macro_f1,
-    total_items: metrics[category].total_items,
-    [maeKey]: metrics[category][maeKey]
+const parseCategory = (metrics, maeKey) =>
+  Object.keys(metrics).map(cat => ({
+    category: cat,
+    accuracy: metrics[cat].accuracy,
+    macro_f1: metrics[cat].macro_f1,
+    total_items: metrics[cat].total_items,
+    [maeKey]: metrics[cat][maeKey]
   }))
-}
 
-/* ================= API ================= */
+/* ---------------- LOAD DATA ---------------- */
 
 const loadMetrics = async () => {
   try {
+    loading.value = true
 
     // 🔹 FORECAST
-    const forecast = await api.get("/metrics/forecast")
+    const f = await getForecast()
+    console.log("FORECAST:", f.data)
 
-    if (forecast.data.success) {
-      forecastRows.value = parseForecast(forecast.data.metrics)
+    if (f.data.success) {
+      forecastRows.value = parseForecast(f.data.metrics)
     }
 
     // 🔹 STOCKOUT
-    const stockout = await api.get("/metrics/stockout-risk")
+    const s = await getStockout()
+    console.log("STOCKOUT:", s.data)
 
-    if (stockout.data.success) {
-      stockoutRows.value = parseCategoryMetrics(
-        stockout.data.metrics,
-        "risk_mae"
-      )
-
-      stockoutGlobalRows.value = objToRows(
-        stockout.data.global_metrics
-      )
+    if (s.data.success) {
+      stockoutRows.value = parseCategory(s.data.metrics, "risk_mae")
+      stockoutGlobal.value = objToRows(s.data.global_metrics)
     }
 
-    // 🔹 ITEM MOVEMENT
-    const movement = await api.get("/metrics/item-movement")
+    // 🔹 MOVEMENT
+    const m = await getMovement()
+    console.log("MOVEMENT:", m.data)
 
-    if (movement.data.success) {
-      movementRows.value = parseCategoryMetrics(
-        movement.data.metrics,
-        "movement_mae"
-      )
-
-      movementGlobalRows.value = objToRows(
-        movement.data.global_metrics
-      )
+    if (m.data.success) {
+      movementRows.value = parseCategory(m.data.metrics, "movement_mae")
+      movementGlobal.value = objToRows(m.data.global_metrics)
     }
 
   } catch (err) {
-    console.error("Metrics load error:", err)
+    console.error("METRICS ERROR:", err)
+
+    toast.add({
+      severity: "error",
+      summary: "Metrics Failed",
+      detail: err.response?.data?.error || "API request failed",
+      life: 3000,
+    })
   } finally {
     loading.value = false
   }
@@ -192,15 +115,85 @@ const loadMetrics = async () => {
 onMounted(loadMetrics)
 </script>
 
-<style scoped>
-.metrics-page {
-  padding: 20px;
-}
+<template>
+  <div class="metrics-page">
 
-.title {
-  margin-bottom: 20px;
-  font-weight: 600;
-}
+    <Toast position="top-center" />
+
+    <h2 class="title">AI Model Metrics Dashboard</h2>
+
+    <div v-if="loading" class="loading">
+      <ProgressSpinner />
+    </div>
+
+    <div v-else class="grid">
+
+      <!-- FORECAST -->
+      <Card>
+        <template #title>Demand Forecast Metrics</template>
+
+        <DataTable :value="forecastRows" stripedRows>
+          <Column field="category" header="Category" />
+          <Column field="range" header="Range" />
+          <Column field="mae" header="MAE" />
+          <Column field="rmse" header="RMSE" />
+          <Column field="mape" header="MAPE" />
+        </DataTable>
+      </Card>
+
+      <!-- STOCKOUT GLOBAL -->
+      <Card>
+        <template #title>Stockout Risk - Global</template>
+
+        <DataTable :value="stockoutGlobal">
+          <Column field="name" header="Metric" />
+          <Column field="value" header="Value" />
+        </DataTable>
+      </Card>
+
+      <!-- MOVEMENT GLOBAL -->
+      <Card>
+        <template #title>Item Movement - Global</template>
+
+        <DataTable :value="movementGlobal">
+          <Column field="name" header="Metric" />
+          <Column field="value" header="Value" />
+        </DataTable>
+      </Card>
+
+      <!-- STOCKOUT CATEGORY -->
+      <Card>
+        <template #title>Stockout Risk By Category</template>
+
+        <DataTable :value="stockoutRows">
+          <Column field="category" header="Category" />
+          <Column field="accuracy" header="Accuracy" />
+          <Column field="macro_f1" header="Macro F1" />
+          <Column field="risk_mae" header="Risk MAE" />
+          <Column field="total_items" header="Items" />
+        </DataTable>
+      </Card>
+
+      <!-- MOVEMENT CATEGORY -->
+      <Card>
+        <template #title>Item Movement By Category</template>
+
+        <DataTable :value="movementRows">
+          <Column field="category" header="Category" />
+          <Column field="accuracy" header="Accuracy" />
+          <Column field="macro_f1" header="Macro F1" />
+          <Column field="movement_mae" header="MAE" />
+          <Column field="total_items" header="Items" />
+        </DataTable>
+      </Card>
+
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.metrics-page { padding: 20px; }
+.title { color: #fff; margin-bottom: 20px; }
 
 .grid {
   display: grid;
