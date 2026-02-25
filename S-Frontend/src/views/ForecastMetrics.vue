@@ -1,11 +1,23 @@
 <script setup>
 import { ref, onMounted } from "vue"
+import api from "../services/api"
 
 const loading = ref(true)
 const rows = ref([])
+const global = ref({
+  avg_mae: 0,
+  avg_rmse: 0,
+  avg_mape: 0
+})
 
+/* ---------------- PARSE METRICS ---------------- */
 const parseMetrics = (metrics) => {
   const list = []
+
+  let maeSum = 0
+  let rmseSum = 0
+  let mapeSum = 0
+  let count = 0
 
   Object.keys(metrics).forEach(category => {
     const ranges = metrics[category]
@@ -16,52 +28,182 @@ const parseMetrics = (metrics) => {
       list.push({
         category,
         range,
-        mae: m.mae.toFixed(2),
-        rmse: m.rmse.toFixed(2),
-        mape: m.mape.toFixed(2)
+        mae: Number(m.mae),
+        rmse: Number(m.rmse),
+        mape: Number(m.mape)
       })
+
+      maeSum += Number(m.mae)
+      rmseSum += Number(m.rmse)
+      mapeSum += Number(m.mape)
+      count++
     })
   })
+
+  // 🔥 Compute GLOBAL KPI values
+  global.value.avg_mae = (maeSum / count).toFixed(2)
+  global.value.avg_rmse = (rmseSum / count).toFixed(2)
+  global.value.avg_mape = (mapeSum / count).toFixed(2)
 
   return list
 }
 
+/* ---------------- LOAD DATA ---------------- */
 const load = async () => {
-  const res = await fetch("https://api.pimart.software/metrics/forecast")
-  const data = await res.json()
+  try {
+    const res = await api.get("/metrics/forecast")
 
-  if (data.success) {
-    rows.value = parseMetrics(data.metrics)
+    if (res.data.success) {
+      rows.value = parseMetrics(res.data.metrics)
+    }
+  } catch (err) {
+    console.error("Forecast metrics error:", err)
+  } finally {
+    loading.value = false
   }
-
-  loading.value = false
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <div style="padding:20px;color:white">
-    <h2>Forecast Metrics</h2>
+  <div class="metrics-page">
+    <h2 class="title">Demand Forecast AI Metrics</h2>
 
-    <div v-if="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      Loading model metrics...
+    </div>
 
-    <table v-else border="1" cellpadding="6">
-      <tr>
-        <th>Category</th>
-        <th>Range</th>
-        <th>MAE</th>
-        <th>RMSE</th>
-        <th>MAPE</th>
-      </tr>
+    <div v-else>
 
-      <tr v-for="r in rows" :key="r.category+r.range">
-        <td>{{ r.category }}</td>
-        <td>{{ r.range }}</td>
-        <td>{{ r.mae }}</td>
-        <td>{{ r.rmse }}</td>
-        <td>{{ r.mape }}</td>
-      </tr>
-    </table>
+      <!-- 🔥 KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span>Average MAE</span>
+          <h3>{{ global.avg_mae }}</h3>
+        </div>
+
+        <div class="kpi-card">
+          <span>Average RMSE</span>
+          <h3>{{ global.avg_rmse }}</h3>
+        </div>
+
+        <div class="kpi-card">
+          <span>Average MAPE</span>
+          <h3>{{ global.avg_mape }}%</h3>
+        </div>
+      </div>
+
+      <!-- 📊 CATEGORY TABLE -->
+      <div class="table-wrapper">
+        <h3>Forecast Accuracy by Category</h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Range</th>
+              <th>MAE</th>
+              <th>RMSE</th>
+              <th>MAPE</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="r in rows" :key="r.category + r.range">
+              <td>{{ r.category }}</td>
+              <td>{{ r.range }}</td>
+
+              <td>{{ r.mae.toFixed(2) }}</td>
+              <td>{{ r.rmse.toFixed(2) }}</td>
+
+              <td :class="r.mape < 40 ? 'good' : r.mape < 70 ? 'warn' : 'bad'">
+                {{ r.mape.toFixed(2) }}%
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
   </div>
 </template>
+
+<style scoped>
+.metrics-page {
+  padding: 20px;
+  color: #fff;
+}
+
+.title {
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+/* 🔥 KPI GRID */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: #111827;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.kpi-card span {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.kpi-card h3 {
+  margin-top: 6px;
+  font-size: 1.6rem;
+}
+
+/* 📊 TABLE */
+.table-wrapper {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 10px;
+  background: #020617;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.good {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.warn {
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.bad {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.loading {
+  margin-top: 40px;
+}
+</style>

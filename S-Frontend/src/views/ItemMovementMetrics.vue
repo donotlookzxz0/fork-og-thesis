@@ -1,10 +1,13 @@
 <script setup>
 import { ref, onMounted } from "vue"
+import api from "../services/api"   // ✅ USE AXIOS INSTANCE
 
 const loading = ref(true)
-const rows = ref([])
-const globalRows = ref([])
 
+const rows = ref([])
+const global = ref({})
+
+/* ---------------- PARSE CATEGORY ---------------- */
 const parseCategory = (metrics) => {
   return Object.keys(metrics).map(cat => ({
     category: cat,
@@ -15,58 +18,166 @@ const parseCategory = (metrics) => {
   }))
 }
 
-const objToRows = (obj) => {
-  return Object.keys(obj).map(k => ({
-    name: k,
-    value: typeof obj[k] === "object"
-      ? JSON.stringify(obj[k])
-      : obj[k]
-  }))
-}
-
+/* ---------------- LOAD DATA ---------------- */
 const load = async () => {
-  const res = await fetch("https://api.pimart.software/metrics/item-movement")
-  const data = await res.json()
+  try {
+    const res = await api.get("/metrics/item-movement") // ✅ USING API.JS
 
-  if (data.success) {
-    rows.value = parseCategory(data.metrics)
-    globalRows.value = objToRows(data.global_metrics)
+    if (res.data.success) {
+      rows.value = parseCategory(res.data.metrics)
+      global.value = res.data.global_metrics
+    }
+  } catch (err) {
+    console.error("Item movement metrics error:", err)
+  } finally {
+    loading.value = false
   }
-
-  loading.value = false
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <div style="padding:20px;color:white">
-    <h2>Item Movement Metrics</h2>
+  <div class="metrics-page">
+    <h2 class="title">Item Movement AI Metrics</h2>
 
-    <div v-if="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      Loading model metrics...
+    </div>
 
     <div v-else>
-      <h3>Global Metrics</h3>
-      <pre>{{ globalRows }}</pre>
 
-      <h3>By Category</h3>
-      <table border="1">
-        <tr>
-          <th>Category</th>
-          <th>Accuracy</th>
-          <th>Macro F1</th>
-          <th>Movement MAE</th>
-          <th>Total</th>
-        </tr>
+      <!-- 🔥 GLOBAL KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span>Accuracy</span>
+          <h3>{{ global.accuracy }}</h3>
+        </div>
 
-        <tr v-for="r in rows" :key="r.category">
-          <td>{{ r.category }}</td>
-          <td>{{ r.accuracy }}</td>
-          <td>{{ r.macro_f1 }}</td>
-          <td>{{ r.movement_mae }}</td>
-          <td>{{ r.total_items }}</td>
-        </tr>
-      </table>
+        <div class="kpi-card">
+          <span>Macro F1</span>
+          <h3>{{ global.macro_f1 }}</h3>
+        </div>
+
+        <div class="kpi-card">
+          <span>Movement MAE</span>
+          <h3>{{ global.movement_mae }}</h3>
+        </div>
+
+        <div class="kpi-card">
+          <span>Total Items</span>
+          <h3>{{ global.total_items }}</h3>
+        </div>
+      </div>
+
+      <!-- 📊 CATEGORY TABLE -->
+      <div class="table-wrapper">
+        <h3>Category Performance</h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Accuracy</th>
+              <th>Macro F1</th>
+              <th>Movement MAE</th>
+              <th>Total Items</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="r in rows" :key="r.category">
+              <td>{{ r.category }}</td>
+
+              <td :class="r.accuracy >= 0.9 ? 'good' : 'warn'">
+                {{ r.accuracy }}
+              </td>
+
+              <td :class="r.macro_f1 >= 0.8 ? 'good' : 'warn'">
+                {{ r.macro_f1 }}
+              </td>
+
+              <td>{{ r.movement_mae }}</td>
+              <td>{{ r.total_items }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 </template>
+
+<style scoped>
+.metrics-page {
+  padding: 20px;
+  color: #fff;
+}
+
+.title {
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+/* 🔥 KPI GRID */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: #111827;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.kpi-card span {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.kpi-card h3 {
+  margin-top: 6px;
+  font-size: 1.6rem;
+}
+
+/* 📊 TABLE */
+.table-wrapper {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 10px;
+  background: #020617;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.good {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.warn {
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.loading {
+  margin-top: 40px;
+}
+</style>
