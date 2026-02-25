@@ -11,6 +11,8 @@ import ProgressSpinner from "primevue/progressspinner"
 
 const toast = useToast()
 
+console.log("✅ Metrics page script started")
+
 const loading = ref(true)
 
 const forecastRows = ref([])
@@ -19,7 +21,7 @@ const stockoutGlobal = ref([])
 const movementRows = ref([])
 const movementGlobal = ref([])
 
-/* ---------------- API CALLS (LIKE INVENTORY PAGE) ---------------- */
+/* ---------------- API CALLS ---------------- */
 
 const getForecast = () => api.get("/metrics/forecast")
 const getStockout = () => api.get("/metrics/stockout-risk")
@@ -27,21 +29,21 @@ const getMovement = () => api.get("/metrics/item-movement")
 
 /* ---------------- PARSERS ---------------- */
 
-const parseForecast = (metrics) => {
+const parseForecast = (metrics = {}) => {
   const rows = []
 
-  Object.keys(metrics).forEach(category => {
-    const ranges = metrics[category]
+  Object.keys(metrics || {}).forEach(category => {
+    const ranges = metrics[category] || {}
 
     Object.keys(ranges).forEach(range => {
-      const m = ranges[range]
+      const m = ranges[range] || {}
 
       rows.push({
         category,
         range,
-        mae: Number(m.mae).toFixed(2),
-        rmse: Number(m.rmse).toFixed(2),
-        mape: Number(m.mape).toFixed(2) + "%"
+        mae: Number(m.mae ?? 0).toFixed(2),
+        rmse: Number(m.rmse ?? 0).toFixed(2),
+        mape: Number(m.mape ?? 0).toFixed(2) + "%"
       })
     })
   })
@@ -49,57 +51,59 @@ const parseForecast = (metrics) => {
   return rows
 }
 
-const objToRows = (obj) =>
-  Object.keys(obj).map(k => ({
+const objToRows = (obj = {}) =>
+  Object.keys(obj || {}).map(k => ({
     name: k,
     value: typeof obj[k] === "object"
       ? JSON.stringify(obj[k])
       : obj[k]
   }))
 
-const parseCategory = (metrics, maeKey) =>
-  Object.keys(metrics).map(cat => ({
+const parseCategory = (metrics = {}, maeKey) =>
+  Object.keys(metrics || {}).map(cat => ({
     category: cat,
-    accuracy: metrics[cat].accuracy,
-    macro_f1: metrics[cat].macro_f1,
-    total_items: metrics[cat].total_items,
-    [maeKey]: metrics[cat][maeKey]
+    accuracy: metrics[cat]?.accuracy ?? 0,
+    macro_f1: metrics[cat]?.macro_f1 ?? 0,
+    total_items: metrics[cat]?.total_items ?? 0,
+    [maeKey]: metrics[cat]?.[maeKey] ?? 0
   }))
 
 /* ---------------- LOAD DATA ---------------- */
 
 const loadMetrics = async () => {
+  console.log("🚀 loadMetrics() running")
+
   try {
     loading.value = true
 
     // 🔹 FORECAST
     const f = await getForecast()
-    console.log("FORECAST:", f.data)
+    console.log("FORECAST RESPONSE:", f.data)
 
-    if (f.data.success) {
+    if (f?.data?.success) {
       forecastRows.value = parseForecast(f.data.metrics)
     }
 
     // 🔹 STOCKOUT
     const s = await getStockout()
-    console.log("STOCKOUT:", s.data)
+    console.log("STOCKOUT RESPONSE:", s.data)
 
-    if (s.data.success) {
+    if (s?.data?.success) {
       stockoutRows.value = parseCategory(s.data.metrics, "risk_mae")
       stockoutGlobal.value = objToRows(s.data.global_metrics)
     }
 
     // 🔹 MOVEMENT
     const m = await getMovement()
-    console.log("MOVEMENT:", m.data)
+    console.log("MOVEMENT RESPONSE:", m.data)
 
-    if (m.data.success) {
+    if (m?.data?.success) {
       movementRows.value = parseCategory(m.data.metrics, "movement_mae")
       movementGlobal.value = objToRows(m.data.global_metrics)
     }
 
   } catch (err) {
-    console.error("METRICS ERROR:", err)
+    console.error("❌ METRICS ERROR:", err)
 
     toast.add({
       severity: "error",
@@ -112,7 +116,10 @@ const loadMetrics = async () => {
   }
 }
 
-onMounted(loadMetrics)
+onMounted(() => {
+  console.log("📌 onMounted triggered")
+  loadMetrics()
+})
 </script>
 
 <template>
