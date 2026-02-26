@@ -13,9 +13,7 @@ const usersMap = ref({})   // 🔑 id -> username lookup
 const loading = ref(false)
 const lastRun = ref(null)
 
-/* =========================
-   LOAD USERS (FOR NAME MAP)
-========================= */
+
 const loadUsers = async () => {
   try {
     const res = await api.get("/users")
