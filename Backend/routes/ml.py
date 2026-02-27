@@ -152,7 +152,7 @@ def get_item_movement_forecast():
             "movement_class": r.movement_class,
             "created_at": r.created_at.isoformat()
         }
-        for r in records
+        for r in records    
     ]), 200
 
 @ml_bp.route("/item-movement-forecast/best", methods=["GET"])
@@ -167,7 +167,7 @@ def get_top_selling_items():
         {
             "name": r.item_name,
             "avg_daily_sales": r.avg_daily_sales,
-            "price": r.item.price if r.item else None,
+            "price": float(r.item.price) if r.item and r.item.price else 0.0,
             "barcode": r.item.barcode if r.item else None,
         }
         for r in records

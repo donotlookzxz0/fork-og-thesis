@@ -12,13 +12,24 @@ app = Flask(__name__)
 # --------------------------------------------------
 # SECURITY / COOKIE CONFIG
 # --------------------------------------------------
+# app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+# # REQUIRED for cross-site cookies (Vercel + API)
+# app.config["SESSION_COOKIE_HTTPONLY"] = True
+# app.config["SESSION_COOKIE_SAMESITE"] = "None"
+# app.config["SESSION_COOKIE_SECURE"] = True
+
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-# REQUIRED for cross-site cookies (Vercel + API)
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "None"
-app.config["SESSION_COOKIE_SECURE"] = True
+# Local development cookies
+if os.getenv("FLASK_ENV") == "development":
+    app.config["SESSION_COOKIE_SECURE"] = False
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+else:
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 # --------------------------------------------------
 # CORS (PRODUCTION SAFE FOR COOKIE AUTH)
@@ -35,6 +46,9 @@ CORS(
         "http://localhost:5173",  # Vue dev server
         "https://fork-og-thesis-dczn.vercel.app",
         "https://chippable-lawrence-seventhly.ngrok-free.dev",
+        os.getenv("CORS_ORIGIN_MOBILE"),
+        os.getenv("CORS_ORIGIN_PC"),
+        os.getenv("CORS_ORIGIN_LOCAL"),
     ],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
