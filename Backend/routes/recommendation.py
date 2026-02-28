@@ -24,7 +24,8 @@ def get_my_recommendations():
                 "barcode": i.barcode,
                 "name": i.name,
                 "category": i.category,
-                "price": float(i.price)
+                "price": float(i.price),
+                "quantity": i.quantity
             }
             for i in items
         ]
