@@ -6,11 +6,11 @@ from models.item import Item
 from datetime import datetime, timedelta
 import random
 
-USER_ID = 1
+USER_ID = 4
 
 # Dates from Jan 22 to Jan 27, 2026
 start_date = datetime(2026, 1, 22)
-end_date = datetime(2026, 1, 27)
+end_date = datetime(2026, 2, 27)
 
 with app.app_context():
     items = Item.query.all()

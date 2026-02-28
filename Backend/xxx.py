@@ -28,7 +28,7 @@ with app.app_context():
             category=item_data["category"],
             price=item_data["price"],
             barcode=item_data["barcode"],
-            quantity=200  # default starting quantity
+            quantity=99999999  # default starting quantity
         )
         db.session.add(item)
 
