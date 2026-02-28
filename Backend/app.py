@@ -43,12 +43,8 @@ CORS(
         # "https://digital-ocean-react.vercel.app",  # Keep for backward compatibility
         # "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
         # "http://localhost:5173"
-        "http://localhost:5173",  # Vue dev server
-        "https://fork-og-thesis-dczn.vercel.app",
-        "https://chippable-lawrence-seventhly.ngrok-free.dev",
-        os.getenv("CORS_ORIGIN_MOBILE"),
-        os.getenv("CORS_ORIGIN_PC"),
         os.getenv("CORS_ORIGIN_LOCAL"),
+        os.getenv("CORS_ORIGIN_LOCAL_V"),q
     ],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
