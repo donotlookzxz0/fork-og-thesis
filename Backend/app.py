@@ -44,7 +44,7 @@ CORS(
         # "https://server-frontend-digi-ocean.vercel.app",  # Keep for backward compatibility
         # "http://localhost:5173"
         os.getenv("CORS_ORIGIN_LOCAL"),
-        os.getenv("CORS_ORIGIN_LOCAL_V"),q
+        os.getenv("CORS_ORIGIN_LOCAL_V"),
     ],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
