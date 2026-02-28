@@ -182,6 +182,7 @@ def get_top_selling_items():
             "avg_daily_sales": r.avg_daily_sales,
             "price": float(r.item.price) if r.item else 0.0,
             "barcode": r.item.barcode if r.item else None,
+            "quantity": r.item.quantity if r.item else 0,
         }
         for r in records
     ]), 200

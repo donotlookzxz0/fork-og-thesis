@@ -40,6 +40,11 @@ function RecommendedItems({ setCart }) {
   }, []);
 
   const handleAdd = (item) => {
+    if (item.quantity <= 0) {
+      setSuccess(item.barcode);
+      setTimeout(() => setSuccess(null), 1500);
+      return;
+    }
     setAdding(item.barcode);
     setTimeout(() => {
       addToCart(item);
@@ -50,6 +55,11 @@ function RecommendedItems({ setCart }) {
   };
 
   const handleBestAdd = (item) => {
+    if (item.quantity <= 0) {
+      setBestSuccess(item.barcode);
+      setTimeout(() => setBestSuccess(null), 1500);
+      return;
+    }
     setBestAdding(item.barcode);
     setTimeout(() => {
       addToCart(item);
@@ -87,14 +97,16 @@ function RecommendedItems({ setCart }) {
                 </p>
                 <button
                   className="add-btn"
-                  disabled={adding === item.barcode}
+                  disabled={adding === item.barcode || item.quantity <= 0}
                   onClick={() => handleAdd(item)}
                 >
-                  {adding === item.barcode
-                    ? "Adding..."
-                    : success === item.barcode
-                      ? "Added"
-                      : "Add to Cart"}
+                  {item.quantity <= 0
+                    ? "Out of Stock"
+                    : adding === item.barcode
+                      ? "Adding..."
+                      : success === item.barcode
+                        ? "Added"
+                        : "Add to Cart"}
                 </button>
               </div>
             ))}
@@ -119,14 +131,16 @@ function RecommendedItems({ setCart }) {
                 </p>
                 <button
                   className="add-btn"
-                  disabled={bestAdding === item.barcode}
+                  disabled={bestAdding === item.barcode || item.quantity <= 0}
                   onClick={() => handleBestAdd(item)}
                 >
-                  {bestAdding === item.barcode
-                    ? "Adding..."
-                    : bestSuccess === item.barcode
-                      ? "Added"
-                      : "Add to Cart"}
+                  {item.quantity <= 0
+                    ? "Out of Stock"
+                    : bestAdding === item.barcode
+                      ? "Adding..."
+                      : bestSuccess === item.barcode
+                        ? "Added"
+                        : "Add to Cart"}
                 </button>
               </div>
             ))}
