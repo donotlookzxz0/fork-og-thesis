@@ -13,7 +13,12 @@ import ItemMovement from "../views/ItemMovement.vue"
 import StockoutRisk from "../views/StockoutRisk.vue"
 import Recommendations from "../views/Recommendations.vue"
 import WalletTopUp from "../views/WalletTopUp.vue"
-import GrossSales from "../views/GrossSales.vue"   // ✅ NEW
+import GrossSales from "../views/GrossSales.vue"
+
+/* ✅ NEW METRICS PAGES */
+import ForecastMetrics from "../views/ForecastMetrics.vue"
+import StockoutRiskMetrics from "../views/StockoutRiskMetrics.vue"
+import ItemMovementMetrics from "../views/ItemMovementMetrics.vue"
 
 /* ---------------- ROUTES ---------------- */
 
@@ -32,7 +37,12 @@ const routes = [
   { path: "/analytics/movement", component: ItemMovement },
   { path: "/analytics/stockout", component: StockoutRisk },
   { path: "/analytics/recommendations", component: Recommendations },
-  { path: "/analytics/gross-sales", component: GrossSales } // ✅ NEW
+  { path: "/analytics/gross-sales", component: GrossSales },
+
+  /* ✅ NEW METRICS ROUTES */
+  { path: "/analytics/forecast-metrics", component: ForecastMetrics },
+  { path: "/analytics/stockout-metrics", component: StockoutRiskMetrics },
+  { path: "/analytics/movement-metrics", component: ItemMovementMetrics }
 ]
 
 const router = createRouter({
@@ -47,22 +57,17 @@ let isAuthenticated = false
 let authChecked = false
 
 router.beforeEach(async (to, from, next) => {
-  // Public pages (login only)
   if (to.meta.public) {
     return next()
   }
 
-  // If already validated in this session, allow immediately
   if (authChecked && isAuthenticated) {
     return next()
   }
 
   try {
-    // 🔥 CRITICAL FIX — MUST USE LEADING SLASH
-    const res = await api.get("/users/me")
-
-    // optional: role available here if you want later
-    // const role = res.data.role
+    // 🔥 MUST USE LEADING SLASH
+    await api.get("/users/me")
 
     isAuthenticated = true
     authChecked = true

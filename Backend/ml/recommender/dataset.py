@@ -4,7 +4,7 @@ from sqlalchemy.orm import joinedload
 
 def build_interactions():
     user_item = defaultdict(lambda: defaultdict(int))
-    
+
     transactions = (
         SalesTransaction.query
         .options(joinedload(SalesTransaction.items))

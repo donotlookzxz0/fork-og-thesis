@@ -5,41 +5,34 @@
 
     <Card>
       <template #title>
-        Gross Sales Overview
+        Total/Overall Gross Sales Overview
       </template>
 
       <template #content>
 
-        <!-- Filters -->
-        <div class="grid mb-4">
-          <div class="col-12 md:col-3">
-            <label class="block mb-2">Start Date</label>
-            <Calendar v-model="startDate" showIcon class="w-full" />
+        <div class="grid mb-5 align-items-end">
+          <div class="col-12 md:col-4 flex flex-column gap-2">
+            <label>Start Date</label>
+            <Calendar v-model="startDate" showIcon class="w-full" inputClass="w-full h-3rem" />
           </div>
 
-          <div class="col-12 md:col-3">
-            <label class="block mb-2">End Date</label>
-            <Calendar v-model="endDate" showIcon class="w-full" />
+          <div class="col-12 md:col-4 flex flex-column gap-2">
+            <label>End Date</label>
+            <Calendar v-model="endDate" showIcon class="w-full" inputClass="w-full h-3rem" />
           </div>
 
-          <div class="col-12 md:col-3 flex align-items-end">
-            <Button
-              label="Load Sales"
-              icon="pi pi-search"
-              class="w-full"
-              :loading="loading"
-              @click="loadSales"
-            />
+          <div class="col-12 md:col-4 flex align-items-end">
+            <Button label="Load Sales" icon="pi pi-search" class="w-full h-3rem" :loading="loading"
+              @click="loadSales" />
           </div>
         </div>
 
-        <!-- Summary Cards -->
-        <div class="grid mb-4">
+        <div class="grid mb-5">
           <div class="col-12 md:col-4">
             <Card>
               <template #content>
                 <div class="text-xl font-bold">Total Gross Sales</div>
-                <div class="text-3xl mt-2">
+                <div class="text-3xl mt-3">
                   {{ peso(totalGross) }}
                 </div>
               </template>
@@ -50,7 +43,7 @@
             <Card>
               <template #content>
                 <div class="text-xl font-bold">Transactions</div>
-                <div class="text-3xl mt-2">
+                <div class="text-3xl mt-3">
                   {{ rows.length }}
                 </div>
               </template>
@@ -61,7 +54,7 @@
             <Card>
               <template #content>
                 <div class="text-xl font-bold">Average Sale</div>
-                <div class="text-3xl mt-2">
+                <div class="text-3xl mt-3">
                   {{ peso(avgSale) }}
                 </div>
               </template>
@@ -69,15 +62,7 @@
           </div>
         </div>
 
-        <!-- Table -->
-        <DataTable
-          :value="rows"
-          paginator
-          :rows="10"
-          stripedRows
-          responsiveLayout="scroll"
-          :loading="loading"
-        >
+        <DataTable :value="rows" paginator :rows="10" stripedRows responsiveLayout="scroll" :loading="loading">
           <Column field="date" header="Date" />
           <Column field="transaction_id" header="Transaction ID" />
           <Column field="items_count" header="Items" />
@@ -88,7 +73,6 @@
             </template>
           </Column>
 
-          <!-- ✅ NEW — ITEMS SOLD -->
           <Column header="Items Sold">
             <template #body="slotProps">
               <ul class="items-list">
@@ -128,8 +112,6 @@ const endDate = ref(null)
 const rows = ref([])
 const loading = ref(false)
 
-/* ---------------- COMPUTED ---------------- */
-
 const totalGross = computed(() =>
   rows.value.reduce((s, r) => s + r.gross, 0)
 )
@@ -138,13 +120,9 @@ const avgSale = computed(() =>
   rows.value.length ? totalGross.value / rows.value.length : 0
 )
 
-/* ---------------- HELPERS ---------------- */
-
 function peso(v) {
   return `₱${Number(v || 0).toFixed(2)}`
 }
-
-/* DATE FILTER — LOCAL SAFE */
 
 function toLocalYMD(d) {
   const dt = new Date(d)
@@ -166,8 +144,6 @@ function inRange(dateStr) {
 
   return true
 }
-
-/* ---------------- MAIN ---------------- */
 
 async function loadSales() {
   loading.value = true
@@ -191,7 +167,7 @@ async function loadSales() {
           date: new Date(t.date).toLocaleString(),
           gross,
           items_count: itemsCount,
-          items: t.items   // ✅ pass through
+          items: t.items
         }
       })
 
