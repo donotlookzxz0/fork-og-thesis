@@ -1,73 +1,56 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed } from "vue"
 import api from "../services/api"
 
-// 🔔 PrimeVue Toast
 import Toast from "primevue/toast"
 import { useToast } from "primevue/usetoast"
 
 const toast = useToast()
 
 const recommendations = ref([])
-const usersMap = ref({})   // 🔑 id -> username lookup
+const totalUsers = ref(0)
 const loading = ref(false)
-const lastRun = ref(null)
+const training = ref(false)
+const trainingLogs = ref([])
+const metrics = ref({
+  rmse: null,
+  mse: null
+})
 
+const usersWithRecs = computed(() => {
+  return recommendations.value.filter(r => r.recommendations && r.recommendations.length > 0).length
+})
 
-const loadUsers = async () => {
-  try {
-    const res = await api.get("/users")
+const usersWithoutRecs = computed(() => {
+  return totalUsers.value - usersWithRecs.value
+})
 
-    // Build { id: username } map
-    usersMap.value = res.data.reduce((map, u) => {
-      map[u.id] = u.username
-      return map
-    }, {})
-
-  } catch (err) {
-    console.error("Load users failed:", err)
-
-    toast.add({
-      severity: "error",
-      summary: "User Load Failed",
-      detail: "Failed to load user names",
-      life: 3000,
-    })
-  }
-}
-
-/* =========================
-   LOAD RECOMMENDATIONS
-========================= */
 const loadRecommendations = async () => {
   try {
-    const res = await api.get("/recommendations")
-    recommendations.value = res.data
+    loading.value = true
+    const [recsRes, usersRes] = await Promise.all([
+      api.get("/recommendations"),
+      api.get("/users")
+    ])
 
-    toast.add({
-      severity: "info",
-      summary: "Recommendations Loaded",
-      detail: "Latest recommendations retrieved",
-      life: 2000,
-    })
+    recommendations.value = recsRes.data
+    totalUsers.value = usersRes.data.length
 
   } catch (err) {
     console.error("Load recommendations failed:", err)
-
     toast.add({
       severity: "error",
       summary: "Load Failed",
       detail: err.response?.data?.error || "Failed to load recommendations",
       life: 3000,
     })
+  } finally {
+    loading.value = false
   }
 }
 
-/* =========================
-   RUN RECOMMENDER (ADMIN)
-========================= */
 const runRecommender = async () => {
-  if (loading.value) {
+  if (training.value) {
     toast.add({
       severity: "warn",
       summary: "Already Running",
@@ -78,89 +61,99 @@ const runRecommender = async () => {
   }
 
   try {
-    loading.value = true
+    training.value = true
+    trainingLogs.value = ["Training..."]
 
-    await api.post("/recommendations/train")
-    lastRun.value = new Date().toLocaleString()
+    const res = await api.post("/recommendations/train")
 
-    toast.add({
-      severity: "success",
-      summary: "Training Completed",
-      detail: "AI model updated successfully",
-      life: 3000,
-    })
+    if (res.data.success) {
+      trainingLogs.value = res.data.logs || []
 
-    await loadRecommendations()
+      metrics.value = {
+        rmse: res.data.rmse,
+        mse: res.data.mse
+      }
+
+      toast.add({
+        severity: "success",
+        summary: "Training Completed",
+        detail: "AI model updated successfully",
+        life: 3000,
+      })
+
+      await loadRecommendations()
+    }
 
   } catch (err) {
     console.error("Recommender run failed:", err)
-
     toast.add({
       severity: "error",
       summary: "Training Failed",
       detail: err.response?.data?.error || "Failed to run recommender",
       life: 3000,
     })
-
   } finally {
-    loading.value = false
+    training.value = false
   }
 }
 
-/* =========================
-   INIT
-========================= */
 onMounted(async () => {
-  await loadUsers()           // 🔑 load usernames first
   await loadRecommendations()
 })
 </script>
 
 <template>
   <div class="page">
-
-    <!-- 🔔 TOAST POPUPS -->
     <Toast position="top-center" />
 
-    <!-- 🔥 TITLE -->
-    <h1 class="title">
-      <i class="pi pi-brain"></i>
-      AI Recommendations
-    </h1>
+    <h2 class="title">AI Recommendations</h2>
 
     <div class="controls">
-      <button
-        class="btn primary"
-        @click="runRecommender"
-        :disabled="loading"
-      >
+      <button class="btn primary" @click="runRecommender" :disabled="training">
         <i class="pi pi-refresh"></i>
-        {{ loading ? "Training Recommender..." : "Update Recommendations" }}
+        {{ training ? "Training..." : "Update Recommendations" }}
       </button>
-
-      <span v-if="lastRun" class="timestamp">
-        Last run: {{ lastRun }}
-      </span>
     </div>
 
-    <div v-if="!recommendations.length" class="empty">
-      No recommendations yet. Run the AI model.
+    <div v-if="loading" class="loading">
+      Loading recommendations...
     </div>
 
-    <div class="grid">
-      <div v-for="r in recommendations" :key="r.user_id" class="card">
+    <div v-else>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span>Total Users</span>
+          <h3>{{ totalUsers }}</h3>
+        </div>
 
-        <!-- 🔥 USER NAME INSTEAD OF ID -->
-        <h3>
-          {{ usersMap[r.user_id] || `User #${r.user_id}` }}
-        </h3>
+        <div class="kpi-card">
+          <span>Users With Recommendations</span>
+          <h3>{{ usersWithRecs }}</h3>
+        </div>
 
-        <ul>
-          <li v-for="item in r.items" :key="item.id">
-            {{ item.name }}
-            <span class="score">({{ item.score.toFixed(2) }})</span>
-          </li>
-        </ul>
+        <div class="kpi-card">
+          <span>Users Without Recommendations</span>
+          <h3>{{ usersWithoutRecs }}</h3>
+        </div>
+
+        <div class="kpi-card" v-if="metrics.rmse !== null">
+          <span>RMSE</span>
+          <h3>{{ metrics.rmse }}</h3>
+        </div>
+
+        <div class="kpi-card" v-if="metrics.mse !== null">
+          <span>MSE</span>
+          <h3>{{ metrics.mse }}</h3>
+        </div>
+      </div>
+
+      <div v-if="trainingLogs.length" class="logs-wrapper">
+        <h3>Training Logs</h3>
+        <div class="logs">
+          <div v-for="(log, idx) in trainingLogs" :key="idx" class="log-entry">
+            {{ log }}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -169,19 +162,14 @@ onMounted(async () => {
 <style scoped>
 .page {
   padding: 20px;
+  color: #fff;
 }
 
-/* TITLE STYLE */
 .title {
-  color: #ffffff;
-  font-size: 1.8rem;
   margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-size: 1.8rem;
 }
 
-/* CONTROLS */
 .controls {
   display: flex;
   gap: 14px;
@@ -189,12 +177,6 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.timestamp {
-  font-size: 0.85rem;
-  color: #aaa;
-}
-
-/* BUTTON */
 .btn {
   height: 48px;
   padding: 0 18px;
@@ -204,6 +186,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  border-radius: 6px;
 }
 
 .primary {
@@ -211,31 +194,64 @@ onMounted(async () => {
   color: #000;
 }
 
-/* GRID */
-.grid {
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
+  margin-bottom: 24px;
 }
 
-/* CARD */
-.card {
-  background: #1f1f1f;
-  border: 1px solid #333;
+.kpi-card {
+  background: #111827;
   border-radius: 10px;
-  padding: 14px;
+  padding: 18px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
-/* SCORE */
-.score {
-  color: #aaa;
-  font-size: 0.8rem;
-}
-
-/* EMPTY */
-.empty {
+.kpi-card span {
+  font-size: 0.9rem;
   color: #9ca3af;
-  padding: 40px 0;
-  text-align: center;
+}
+
+.kpi-card h3 {
+  margin-top: 6px;
+  font-size: 1.6rem;
+}
+
+.logs-wrapper {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.logs-wrapper h3 {
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+}
+
+.logs {
+  background: #020617;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  padding: 4px 0;
+  color: #9ca3af;
+}
+
+.loading {
+  margin-top: 40px;
+  color: #9ca3af;
 }
 </style>

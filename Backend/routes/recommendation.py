@@ -88,17 +88,19 @@ def train_recommender():
         return jsonify({
             "success": False,
             "message": "Training already in progress"
-        }), 409  # Conflict
+        }), 409
 
     try:
         _training_in_progress = True
 
-        # BLOCKING — this is intentional
-        retrain_model()
+        result = retrain_model()
 
         return jsonify({
             "success": True,
-            "message": "Training completed successfully"
+            "message": "Training completed successfully",
+            "logs": result["logs"],
+            "rmse": result["rmse"],
+            "mse": result["mse"]
         }), 200
 
     except Exception as e:
