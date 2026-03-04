@@ -6,6 +6,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const controlsRef = useRef(null);
+  const scanLockRef = useRef(false);
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [nameInput, setNameInput] = useState("");
@@ -25,8 +26,9 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
   const fetchProduct = useCallback(
     async (barcode) => {
-      if (!barcode || isLocked) return;
+      if (!barcode || scanLockRef.current) return;
 
+      scanLockRef.current = true;
       setIsLocked(true);
 
       try {
@@ -35,6 +37,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
         if (product.quantity === 0) {
           setScanError(`${product.name} is out of stock`);
+          scanLockRef.current = false;
           setIsLocked(false);
           return;
         }
@@ -44,6 +47,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
         if (cartQty >= product.quantity) {
           setScanError(`Not enough stock for ${product.name}`);
+          scanLockRef.current = false;
           setIsLocked(false);
           return;
         }
@@ -59,14 +63,16 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
         setTimeout(() => {
           setSuccessItem(null);
           setSelectedItem(null);
+          scanLockRef.current = false;
           setIsLocked(false);
         }, 1200);
       } catch {
         setScanError("Item not found");
+        scanLockRef.current = false;
         setIsLocked(false);
       }
     },
-    [cart, onAddToCart, onQuantityChange, isLocked]
+    [cart, onAddToCart, onQuantityChange]
   );
 
   useEffect(() => {
@@ -81,12 +87,14 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
 
-    reader.decodeFromVideoDevice(null, videoRef.current, (result) => {
+    reader.decodeFromVideoDevice(null, videoRef.current, (result, error, controls) => {
+      controlsRef.current = controls;
+
       if (!result) return;
 
       const code = result.getText();
 
-      if (!isLocked) {
+      if (!scanLockRef.current) {
         fetchProduct(code);
       }
     });
@@ -94,9 +102,10 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
     return () => {
       if (controlsRef.current) {
         controlsRef.current.stop();
+        controlsRef.current = null;
       }
     };
-  }, [isScanning, fetchProduct, isLocked]);
+  }, [isScanning, fetchProduct]);
 
   const suggestions = useMemo(() => {
     if (!nameInput) return [];
