@@ -57,7 +57,6 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
         : onAddToCart({ ...product, quantity: 1 });
 
       setSuccessItem(product);
-      setIsScanning(false);
       setBarcodeInput("");
       setNameInput("");
 
