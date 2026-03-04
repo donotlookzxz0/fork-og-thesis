@@ -58,6 +58,10 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
         setBarcodeInput("");
         setNameInput("");
 
+        if (controlsRef.current) {
+          controlsRef.current.stop();
+        }
+
         if (scanTimeoutRef.current) {
           clearTimeout(scanTimeoutRef.current);
         }
@@ -66,15 +70,34 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
           setSuccessItem(null);
           setSelectedItem(null);
           lastScannedRef.current = null;
-        }, 1200);
+          isProcessingRef.current = false;
 
-        isProcessingRef.current = false;
+          if (isScanning && readerRef.current) {
+            readerRef.current
+              .decodeFromVideoDevice(null, videoRef.current, (result, error, controls) => {
+                controlsRef.current = controls;
+
+                if (!result) return;
+
+                const code = result.getText();
+
+                if (
+                  code &&
+                  code !== lastScannedRef.current &&
+                  !isProcessingRef.current
+                ) {
+                  lastScannedRef.current = code;
+                  fetchProduct(code);
+                }
+              });
+          }
+        }, 1200);
       } catch {
         setScanError("Item not found");
         isProcessingRef.current = false;
       }
     },
-    [cart, onAddToCart, onQuantityChange]
+    [cart, onAddToCart, onQuantityChange, isScanning]
   );
 
   useEffect(() => {
