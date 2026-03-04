@@ -6,8 +6,6 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const controlsRef = useRef(null);
-  const scanTimeoutRef = useRef(null);
-  const isProcessingRef = useRef(false);
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [nameInput, setNameInput] = useState("");
@@ -16,6 +14,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
   const [successItem, setSuccessItem] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [scanError, setScanError] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     api
@@ -26,9 +25,9 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
   const fetchProduct = useCallback(
     async (barcode) => {
-      if (!barcode || isProcessingRef.current || successItem) return;
+      if (!barcode || isLocked) return;
 
-      isProcessingRef.current = true;
+      setIsLocked(true);
 
       try {
         const { data } = await api.get(`/items/barcode/${barcode}`);
@@ -36,7 +35,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
         if (product.quantity === 0) {
           setScanError(`${product.name} is out of stock`);
-          isProcessingRef.current = false;
+          setIsLocked(false);
           return;
         }
 
@@ -45,7 +44,7 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
 
         if (cartQty >= product.quantity) {
           setScanError(`Not enough stock for ${product.name}`);
-          isProcessingRef.current = false;
+          setIsLocked(false);
           return;
         }
 
@@ -57,43 +56,17 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
         setBarcodeInput("");
         setNameInput("");
 
-        if (controlsRef.current) {
-          controlsRef.current.stop();
-        }
-
-        if (scanTimeoutRef.current) {
-          clearTimeout(scanTimeoutRef.current);
-        }
-
-        scanTimeoutRef.current = setTimeout(() => {
+        setTimeout(() => {
           setSuccessItem(null);
           setSelectedItem(null);
-          isProcessingRef.current = false;
-
-          if (isScanning && readerRef.current) {
-            readerRef.current.decodeFromVideoDevice(
-              null,
-              videoRef.current,
-              (result, error, controls) => {
-                controlsRef.current = controls;
-
-                if (!result) return;
-
-                const code = result.getText();
-
-                if (!isProcessingRef.current && !successItem) {
-                  fetchProduct(code);
-                }
-              }
-            );
-          }
+          setIsLocked(false);
         }, 1200);
       } catch {
         setScanError("Item not found");
-        isProcessingRef.current = false;
+        setIsLocked(false);
       }
     },
-    [cart, onAddToCart, onQuantityChange, successItem, isScanning]
+    [cart, onAddToCart, onQuantityChange, isLocked]
   );
 
   useEffect(() => {
@@ -102,55 +75,45 @@ export const useScanner = ({ cart, onAddToCart, onQuantityChange }) => {
         controlsRef.current.stop();
         controlsRef.current = null;
       }
-      if (readerRef.current) {
-        readerRef.current = null;
-      }
       return;
     }
 
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
 
-    reader
-      .decodeFromVideoDevice(null, videoRef.current, (result, error, controls) => {
-        controlsRef.current = controls;
+    reader.decodeFromVideoDevice(null, videoRef.current, (result) => {
+      if (!result) return;
 
-        if (!result) return;
+      const code = result.getText();
 
-        const code = result.getText();
-
-        if (!isProcessingRef.current && !successItem) {
-          fetchProduct(code);
-        }
-      })
-      .catch(() => {
-        setIsScanning(false);
-      });
+      if (!isLocked) {
+        fetchProduct(code);
+      }
+    });
 
     return () => {
       if (controlsRef.current) {
         controlsRef.current.stop();
-        controlsRef.current = null;
-      }
-      if (scanTimeoutRef.current) {
-        clearTimeout(scanTimeoutRef.current);
       }
     };
-  }, [isScanning, fetchProduct, successItem]);
+  }, [isScanning, fetchProduct, isLocked]);
 
   const suggestions = useMemo(() => {
     if (!nameInput) return [];
     const q = nameInput.toLowerCase().trim();
+
     return items
       .map((i) => {
         const name = i.name.toLowerCase();
         const barcode = String(i.barcode || "");
+
         let score = 0;
+
         if (name.startsWith(q)) score = 3;
-        else if (name.includes(" " + q)) score = 2;
         else if (name.includes(q)) score = 1;
+
         if (barcode.startsWith(q)) score = Math.max(score, 2);
-        else if (barcode.includes(q)) score = Math.max(score, 1);
+
         return { ...i, _score: score };
       })
       .filter((i) => i._score > 0)
