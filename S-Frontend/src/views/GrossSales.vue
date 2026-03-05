@@ -17,7 +17,7 @@
           </div>
 
           <div class="col-12 md:col-4 flex flex-column gap-2">
-            <label>End Date</label>
+            <label>Stop Date</label>
             <Calendar v-model="endDate" showIcon class="w-full h-3rem" />
           </div>
 
