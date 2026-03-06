@@ -22,12 +22,10 @@ def generate_recommendations_for_user(user_id):
     if state.model is None or not state.user_map or not state.item_map:
         return False
     
-    # Always rebuild interactions to get latest purchases
     interactions = build_interactions()
     if user_id not in interactions:
         return False
     
-    # If user is new, add them to the map and expand model
     if user_id not in state.user_map:
         state.user_map[user_id] = len(state.user_map)
         
@@ -44,12 +42,10 @@ def generate_recommendations_for_user(user_id):
     
     uidx = state.user_map[user_id]
     user_purchases = interactions[user_id]
-    
-    # Compute item-item similarity scores based on purchase history
+
     with torch.no_grad():
         scores = {}
         
-        # For each item the user bought
         for purchased_item_id in user_purchases.keys():
             if purchased_item_id not in state.item_map:
                 continue
@@ -57,7 +53,6 @@ def generate_recommendations_for_user(user_id):
             purchased_iidx = state.item_map[purchased_item_id]
             purchased_emb = state.model.item_emb.weight[purchased_iidx]
             
-            # Find similar items
             for iid, iidx in state.item_map.items():
                 if iid == purchased_item_id:
                     continue
@@ -69,11 +64,9 @@ def generate_recommendations_for_user(user_id):
                     scores[iid] = 0
                 scores[iid] += similarity
         
-        # Sort by aggregate similarity
         sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:TOP_N]
         state.score_matrix[user_id] = dict(sorted_scores)
     
-    # Update DB
     AIRecommendation.query.filter_by(user_id=user_id).delete()
     for iid, score in state.score_matrix[user_id].items():
         db.session.add(AIRecommendation(
