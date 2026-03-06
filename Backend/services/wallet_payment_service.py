@@ -4,6 +4,8 @@ from models.ewallet_transaction import EWalletTransaction
 from models.sales_transaction import SalesTransaction
 from models.sales_transaction_item import SalesTransactionItem
 from models.item import Item
+from ml.recommender.trainer import generate_recommendations_for_user
+from flask import current_app
 
 
 class WalletPaymentService:
@@ -101,6 +103,13 @@ class WalletPaymentService:
             ))
 
             db.session.commit()
+
+            # Generate recommendations after successful payment
+            try:
+                generate_recommendations_for_user(user_id)
+            except Exception as e:
+                current_app.logger.error(f"Failed to generate recommendations for user {user_id}: {e}")
+            
             return transaction.id
 
         except Exception:
